@@ -1,7 +1,7 @@
 from typing import TypeVar, Type, List, Optional
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-
 from database.interfaces import IRepository
 
 
@@ -13,7 +13,7 @@ class BaseRepository(IRepository[ModelType]):
         self._model = model
         self._db = db
     
-    async def get(self, id: str) -> Optional[ModelType]:
+    async def get(self, id: UUID) -> Optional[ModelType]:
         result = await self._db.execute(select(self._model).where(self._model.id == id))
         return result.scalar_one_or_none()
     
@@ -35,7 +35,7 @@ class BaseRepository(IRepository[ModelType]):
         await self._db.refresh(db_obj)
         return db_obj
     
-    async def delete(self, id: str) -> bool:
+    async def delete(self, id: UUID) -> bool:
         obj = await self.get(id)
         if not obj:
             return False
@@ -43,6 +43,9 @@ class BaseRepository(IRepository[ModelType]):
         await self._db.commit()
         return True
     
-    async def exists(self, id: str) -> bool:
+    async def exists(self, id: UUID) -> bool:
         result = await self._db.execute(select(func.count()).where(self._model.id == id))
         return result.scalar() > 0
+
+
+__all__ = ["BaseRepository", "ModelType"]
