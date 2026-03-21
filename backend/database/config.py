@@ -1,31 +1,24 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
 from sqlalchemy import text
-import os
-from dotenv import load_dotenv
+from src.config import settings
 
-load_dotenv()
-
-from database.models import Base
-
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
-    "postgresql+asyncpg://user:password@localhost:5432/salon"
-)
-
-is_postgres = "postgresql" in DATABASE_URL
+DATABASE_URL = settings.DATABASE_URL
 
 engine: AsyncEngine = create_async_engine(
     DATABASE_URL,
     echo=False,
     future=True,
-    pool_size=10 if is_postgres else 0,         
-    max_overflow=20 if is_postgres else 0,       
+    pool_size=10,        
+    max_overflow=20,      
     pool_timeout=30,      
     pool_recycle=1800,      
     pool_pre_ping=True,   
 )
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False)
+
+Base = declarative_base()
 
 async def get_db():
     async with AsyncSessionLocal() as session:
@@ -51,10 +44,13 @@ async def check_database_exists() -> bool:
 
 async def init_db():
     async with engine.begin() as conn:
-        if is_postgres:
+        try:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        except Exception as e:
+            print(f"Warning: Could not create pgvector extension: {e}")
+            print("AI features may not work properly.")
         await conn.run_sync(Base.metadata.create_all)
-    print("[OK] Database initialized (PostgreSQL)" if is_postgres else "[OK] Database initialized (SQLite)")
+    print("[OK] Database initialized (PostgreSQL)")
 
 async def reset_db():
     async with engine.begin() as conn:
@@ -69,15 +65,12 @@ async def close_db():
 async def get_db_status() -> dict:
     try:
         async with engine.connect() as conn:
-            if is_postgres:
-                result = await conn.execute(text("SELECT version()"))
-            else:
-                result = await conn.execute(text("SELECT sqlite_version()"))
+            result = await conn.execute(text("SELECT version()"))
             version = result.scalar()
             tables_exist = await check_database_exists()
             return {
                 "connected": True,
-                "type": "PostgreSQL" if is_postgres else "SQLite",
+                "type": "PostgreSQL",
                 "version": version,
                 "tables_created": tables_exist
             }
