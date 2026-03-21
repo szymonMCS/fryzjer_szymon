@@ -3,22 +3,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.config import AsyncSessionLocal
 from src.services.factories import ServiceFactory
 from src.services.interfaces.admin import IAdminAuthService
+from src.services.interfaces.service import IServiceService
+from src.services.interfaces.team import ITeamService
+from src.core.exceptions import AuthenticationException
 
 
-async def get_db() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async for session in get_async_session():
+        yield session
+
 
 get_db_session = get_db
+
 
 def get_service_factory(db: AsyncSession = Depends(get_db)) -> ServiceFactory:
     return ServiceFactory(db)
 
 def get_admin_auth_service(factory: ServiceFactory = Depends(get_service_factory)) -> IAdminAuthService:
     return factory.create_admin_auth_service()
+
+def get_service_service(factory: ServiceFactory = Depends(get_service_factory)) -> IServiceService:
+    return factory.create_service_service()
+
+def get_team_service(factory: ServiceFactory = Depends(get_service_factory)) -> ITeamService:
+    return factory.create_team_service()
 
 async def get_current_admin(request: Request, auth_service: IAdminAuthService = Depends(get_admin_auth_service)) -> bool:
     is_valid = await auth_service.verify_session(request)
