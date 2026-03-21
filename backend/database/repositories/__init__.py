@@ -1,11 +1,4 @@
-from .base import BaseRepository
-from .admin_repository import AdminRepository
-from .booking_repository import BookingRepository
-from .knowledge_chunk_repository import KnowledgeChunkRepository
+from database.interfaces import IRepository, ModelType
+from database.repositories.base import BaseRepository
 
-__all__ = [
-    "BaseRepository",
-    "AdminRepository",
-    "BookingRepository",
-    "KnowledgeChunkRepository",
-]
+__all__ = ["IRepository", "BaseRepository", "ModelType"]
