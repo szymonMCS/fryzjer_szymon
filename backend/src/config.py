@@ -1,15 +1,16 @@
+from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     DATABASE_URL: str = Field(..., pattern=r"^postgresql\+asyncpg://", description="PostgreSQL async connection string")
-    SECRET_KEY: str = Field(..., min_length=32, description="Secret key for JWT")
+    SECRET_KEY: str = Field(..., min_length=32, description="Secret key for cookies")
     DEBUG: bool = Field(default=False, description="Debug mode")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, ge=1, le=1440)
-    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, ge=1, le=30)
-    ALGORITHM: str = Field(default="HS256", pattern=r"^HS(256|384|512)$")
+    
+    ADMIN_USERNAME: str = Field(default="admin")
+    ADMIN_PASSWORD: str = Field(...)
 
-    model_config = SettingsConfigDict(env_file="../../.env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(Path(__file__).parent.parent.parent / ".env"), extra="ignore")
 
 settings = Settings()
