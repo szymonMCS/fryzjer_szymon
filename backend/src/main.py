@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.config import init_db, close_db
 from src.config import settings
+from src.api.v1.router import api_router
 
 
 @asynccontextmanager
@@ -54,3 +55,6 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "hairdresser API is running"}
+
+
+app.include_router(api_router, prefix="/api/v1")
