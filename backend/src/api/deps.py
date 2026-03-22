@@ -1,6 +1,7 @@
+from typing import AsyncGenerator
 from fastapi import Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.config import AsyncSessionLocal
+from database.config import get_async_session
 from src.services.factories import ServiceFactory
 from src.services.interfaces.admin import IAdminAuthService
 from src.services.interfaces.service import IServiceService
