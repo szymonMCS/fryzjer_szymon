@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, TypeVar, Generic
-from datetime import datetime
 from uuid import UUID
-from database.models import Service, TeamMember, TeamMemberService, WorkingHours, Booking
+
 
 T = TypeVar("T")
 
@@ -10,18 +9,18 @@ T = TypeVar("T")
 class IRepository(ABC, Generic[T]):
     @abstractmethod
     async def get(self, id: UUID) -> Optional[T]: ...
+    
     @abstractmethod
     async def get_multi(self, skip: int = 0, limit: int = 100) -> List[T]: ...
+    
     @abstractmethod
     async def create(self, obj_in: dict) -> T: ...
+    
     @abstractmethod   
     async def update(self, db_obj: T, obj_in: dict) -> T: ...
+    
     @abstractmethod
     async def delete(self, id: UUID) -> bool: ...
+    
     @abstractmethod
     async def exists(self, id: UUID) -> bool: ...
-    
-
-class IServiceRepository(ABC):
-
-class ITeamRepository(ABC):
