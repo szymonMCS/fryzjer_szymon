@@ -220,12 +220,12 @@ export const ChatWidget = () => {
       <div className="relative flex items-center gap-3">
         {/* Tooltip */}
         {showTooltip && !isOpen && (
-          <div className="absolute right-20 bg-black text-white px-4 py-2 rounded-xl text-sm whitespace-nowrap animate-bounce">
+          <div className="absolute bottom-full right-0 mb-3 bg-black text-white px-4 py-2 rounded-xl text-sm whitespace-nowrap animate-bounce z-50">
             <span className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-yellow-400" />
               Zapytaj o fryzurę!
             </span>
-            <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-3 h-3 bg-black rotate-45" />
+            <div className="absolute bottom-[-6px] right-8 w-3 h-3 bg-black rotate-45" />
           </div>
         )}
 

@@ -132,7 +132,7 @@ export const Hero = () => {
                   if (element) element.scrollIntoView({ behavior: 'smooth' });
                 }}
                 variant="outline"
-                className="hero-cta px-8 py-6 text-lg border-2 border-white text-white hover:bg-white hover:text-black font-medium transition-all"
+                className="hero-cta px-8 py-6 text-lg border-2 border-black text-black hover:bg-black hover:text-white font-medium transition-all"
               >
                 Zobacz usługi
               </Button>
