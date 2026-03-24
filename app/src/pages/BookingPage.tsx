@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { teamMembers } from '@/data/team';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -17,7 +18,8 @@ import {
   ArrowLeft,
   Sparkles,
   Shield,
-  Phone
+  Phone,
+  User
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -37,6 +39,12 @@ export const BookingPage = () => {
     services,
     getTotalPrice,
     getTotalDuration,
+    // Confirmed booking data for success screen
+    confirmedBooking,
+    confirmedService,
+    confirmedTeamMember,
+    getConfirmedTotalPrice,
+    getConfirmedTotalDuration,
   } = useBooking();
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -94,8 +102,8 @@ export const BookingPage = () => {
       </header>
 
       {/* Progress Steps */}
-      <div className="bg-white border-b">
-        <div className="container-custom py-6">
+      <div className="bg-white border-b py-2">
+        <div className="container-custom py-8">
           <div className="flex items-center justify-center max-w-2xl mx-auto">
             {[
               { num: 1, label: 'Usługa' },
@@ -174,6 +182,56 @@ export const BookingPage = () => {
                   </button>
                 ))}
               </div>
+
+              {/* Team Member Selection */}
+              {formData.serviceId && (
+                <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h2 className="text-xl font-bold mb-4">Wybierz fryzjera (opcjonalnie)</h2>
+                  <p className="text-gray-600 mb-4">Wybierz preferowanego fryzjera lub zostaw puste dla dowolnego</p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* "Any" option */}
+                    <button
+                      onClick={() => updateFormData('teamMemberId', '')}
+                      className={`p-4 rounded-2xl border-2 text-center transition-all ${
+                        !formData.teamMemberId
+                          ? 'border-black bg-black text-white'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="w-16 h-16 rounded-full bg-gray-200 mx-auto mb-3 flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-gray-500" />
+                      </div>
+                      <h3 className="font-bold">Dowolny fryzjer</h3>
+                      <p className="text-sm opacity-80 mt-1">Najszybszy termin</p>
+                    </button>
+
+                    {teamMembers.map((member) => (
+                      <button
+                        key={member.id}
+                        onClick={() => updateFormData('teamMemberId', member.id)}
+                        className={`p-4 rounded-2xl border-2 text-center transition-all ${
+                          formData.teamMemberId === member.id
+                            ? 'border-black bg-black text-white'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <img
+                          src={member.image}
+                          alt={member.name}
+                          className="w-16 h-16 rounded-full object-cover mx-auto mb-3"
+                        />
+                        <h3 className="font-bold">{member.name}</h3>
+                        <p className={`text-sm mt-1 ${
+                          formData.teamMemberId === member.id ? 'text-white/80' : 'text-gray-500'
+                        }`}>
+                          {member.role}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-16 flex justify-end">
                 <Button
@@ -414,6 +472,14 @@ export const BookingPage = () => {
                             <span>{formData.time}</span>
                           </div>
                         )}
+                        <div className="flex justify-between py-3 border-b border-white/20">
+                          <span className="text-white/70">Fryzjer</span>
+                          <span>
+                            {formData.teamMemberId 
+                              ? teamMembers.find(m => m.id === formData.teamMemberId)?.name || 'Wybrany fryzjer'
+                              : 'Dowolny dostępny'}
+                          </span>
+                        </div>
                         <div className="pt-4">
                           <div className="flex justify-between text-2xl font-bold">
                             <span>Do zapłaty</span>
@@ -470,7 +536,7 @@ export const BookingPage = () => {
           )}
 
           {/* Step 4: Success */}
-          {step === 4 && success && (
+          {step === 4 && success && confirmedBooking && (
             <div className="animate-in fade-in zoom-in duration-500 text-center py-16">
               <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-8">
                 <Check className="w-12 h-12 text-white" />
@@ -483,12 +549,48 @@ export const BookingPage = () => {
               
               <div className="bg-white rounded-3xl p-8 shadow-lg max-w-md mx-auto mb-8">
                 <h3 className="font-bold mb-4">Szczegóły wizyty:</h3>
-                {selectedService && (
-                  <div className="space-y-2 text-left">
-                    <p><span className="text-gray-500">Usługa:</span> {selectedService.name}</p>
-                    <p><span className="text-gray-500">Data:</span> {formData.date && format(formData.date, 'd MMMM yyyy', { locale: pl })}</p>
-                    <p><span className="text-gray-500">Godzina:</span> {formData.time}</p>
-                    <p><span className="text-gray-500">Cena:</span> {getTotalPrice()} PLN</p>
+                {confirmedService && (
+                  <div className="space-y-3 text-left">
+                    <div className="flex items-center gap-2">
+                      <Scissors className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-500">Usługa:</span>
+                      <span className="font-medium ml-auto">{confirmedService.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-500">Fryzjer:</span>
+                      <span className="font-medium ml-auto">
+                        {confirmedTeamMember?.name || 'Dowolny dostępny'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-500">Data:</span>
+                      <span className="font-medium ml-auto">{confirmedBooking.date && format(confirmedBooking.date, 'd MMMM yyyy', { locale: pl })}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-500">Godzina:</span>
+                      <span className="font-medium ml-auto">{confirmedBooking.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">Czas trwania:</span>
+                      <span className="font-medium ml-auto">{getConfirmedTotalDuration()} min</span>
+                    </div>
+                    <div className="border-t pt-3 mt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500">Cena:</span>
+                        <span className="text-xl font-bold">{getConfirmedTotalPrice()} PLN</span>
+                      </div>
+                    </div>
+                    <div className="border-t pt-3 mt-3 space-y-2 text-sm">
+                      <p><span className="text-gray-500">Imię:</span> {confirmedBooking.customerName}</p>
+                      <p><span className="text-gray-500">Email:</span> {confirmedBooking.customerEmail}</p>
+                      <p><span className="text-gray-500">Telefon:</span> {confirmedBooking.customerPhone}</p>
+                      {confirmedBooking.notes && (
+                        <p><span className="text-gray-500">Uwagi:</span> {confirmedBooking.notes}</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

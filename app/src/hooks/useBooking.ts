@@ -66,6 +66,7 @@ export const useBooking = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState<BookingFormData | null>(null);
 
   const selectedService = services.find(s => s.id === formData.serviceId);
 
@@ -153,10 +154,34 @@ export const useBooking = () => {
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Real API call to backend
+      const response = await fetch('/api/v1/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customer_name: formData.customerName,
+          customer_email: formData.customerEmail,
+          customer_phone: formData.customerPhone,
+          service_id: formData.serviceId,
+          team_member_id: formData.teamMemberId && formData.teamMemberId.trim() !== '' ? formData.teamMemberId : null,
+          booking_date: formData.date?.toISOString().split('T')[0],
+          booking_time: formData.time,
+          notes: formData.notes && formData.notes.trim() !== '' ? formData.notes : null,
+        }),
+      });
 
-      // Simulate success
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Booking error:', errorData);
+        throw new Error(errorData.detail || JSON.stringify(errorData) || 'Błąd podczas rezerwacji');
+      }
+
+      // Save confirmed booking data before resetting
+      setConfirmedBooking({ ...formData });
+      
+      // Success
       setSuccess(true);
       setIsLoading(false);
       
@@ -189,6 +214,17 @@ export const useBooking = () => {
     return selectedService?.duration || 0;
   };
 
+  const confirmedService = services.find(s => s.id === confirmedBooking?.serviceId);
+  const confirmedTeamMember = teamMembers.find(m => m.id === confirmedBooking?.teamMemberId);
+
+  const getConfirmedTotalPrice = (): number => {
+    return confirmedService?.price || 0;
+  };
+
+  const getConfirmedTotalDuration = (): number => {
+    return confirmedService?.duration || 0;
+  };
+
   return {
     formData,
     updateFormData,
@@ -204,5 +240,11 @@ export const useBooking = () => {
     teamMembers,
     getTotalPrice,
     getTotalDuration,
+    // Confirmed booking data for success screen
+    confirmedBooking,
+    confirmedService,
+    confirmedTeamMember,
+    getConfirmedTotalPrice,
+    getConfirmedTotalDuration,
   };
 };

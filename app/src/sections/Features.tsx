@@ -66,20 +66,9 @@ export const Features = () => {
         }
       );
 
-      // Parallax for cards
-      gsap.to('.feature-card:nth-child(1)', {
-        y: -50,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: true,
-        },
-      });
-
-      gsap.to('.feature-card:nth-child(3)', {
-        y: -80,
+      // Parallax for cards - all cards move equally
+      gsap.to('.feature-card', {
+        y: -30,
         ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.current,
@@ -111,15 +100,13 @@ export const Features = () => {
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
               <div
                 key={feature.id}
-                className={`feature-card card-hover bg-white rounded-2xl p-8 shadow-lg ${
-                  index === 1 ? 'md:-mt-8' : ''
-                }`}
+                className="feature-card card-hover bg-white rounded-2xl p-8 shadow-lg h-full"
               >
                 {/* Icon */}
                 <div className="feature-icon w-16 h-16 bg-black rounded-xl flex items-center justify-center mb-6">
