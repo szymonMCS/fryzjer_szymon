@@ -7,6 +7,7 @@ from src.services.factories import ServiceFactory
 from src.services.interfaces.admin import IAdminAuthService
 from src.services.interfaces.service import IServiceService
 from src.services.interfaces.team import ITeamService
+from src.services.interfaces.booking import IBookingService
 from src.core.exceptions import AuthenticationException
 
 
@@ -29,6 +30,9 @@ def get_service_service(factory: ServiceFactory = Depends(get_service_factory)) 
 
 def get_team_service(factory: ServiceFactory = Depends(get_service_factory)) -> ITeamService:
     return factory.create_team_service()
+
+def get_booking_service(factory: ServiceFactory = Depends(get_service_factory)) -> IBookingService:
+    return factory.create_booking_service()
 
 def get_working_hours_repo(db: AsyncSession = Depends(get_db)) -> WorkingHoursRepository:
     return WorkingHoursRepository(db)
