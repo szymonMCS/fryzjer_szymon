@@ -2,13 +2,12 @@ from typing import TypeVar, Type, List, Optional
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from database.interfaces import IRepository
 
 
 ModelType = TypeVar("ModelType")
 
 
-class BaseRepository(IRepository[ModelType]):
+class BaseRepository:
     def __init__(self, model: Type[ModelType], db: AsyncSession):
         self._model = model
         self._db = db
@@ -46,6 +45,3 @@ class BaseRepository(IRepository[ModelType]):
     async def exists(self, id: UUID) -> bool:
         result = await self._db.execute(select(func.count()).where(self._model.id == id))
         return result.scalar() > 0
-
-
-__all__ = ["BaseRepository", "ModelType"]
