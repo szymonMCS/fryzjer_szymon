@@ -1,4 +1,3 @@
-from database.interfaces import IRepository
 from database.repositories.base import BaseRepository
 from database.repositories.service_repository import ServiceRepository
 from database.repositories.team_repository import TeamRepository
@@ -6,7 +5,6 @@ from database.repositories.working_hours_repository import WorkingHoursRepositor
 from database.repositories.booking_repository import BookingRepository
 
 __all__ = [
-    "IRepository",
     "BaseRepository",
     "ServiceRepository",
     "TeamRepository",
