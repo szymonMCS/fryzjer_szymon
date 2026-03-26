@@ -5,3 +5,5 @@ asyncpg
 pgvector
 pydantic-settings
 python-dotenv
+email-validator
+mcp

@@ -5,8 +5,10 @@ export interface Service {
   description: string;
   price: number;
   duration: number; // in minutes
-  image: string;
+  image?: string;
+  image_url?: string;
   category: 'haircut' | 'beard' | 'combo' | 'coloring' | 'other';
+  is_active?: boolean;
 }
 
 // Team Member Types
@@ -14,9 +16,12 @@ export interface TeamMember {
   id: string;
   name: string;
   role: string;
-  description: string;
-  image: string;
+  description?: string;
+  bio?: string;
+  image?: string;
+  image_url?: string;
   specialties: string[];
+  is_active?: boolean;
 }
 
 // Booking Types
@@ -57,11 +62,14 @@ export interface TimeSlot {
 // Review Types
 export interface Review {
   id: string;
-  customerName: string;
-  avatar: string;
+  customer_name: string;
+  customerName?: string; // dla kompatybilności
+  avatar?: string;
   rating: number;
   comment: string;
-  date: string;
+  date?: string; // dla kompatybilności
+  created_at?: string;
+  is_approved?: boolean;
 }
 
 // Chat Types

@@ -11,6 +11,8 @@ from database.repositories.service_repository import ServiceRepository
 from database.repositories.team_repository import TeamRepository
 from database.repositories.booking_repository import BookingRepository
 from database.repositories.working_hours_repository import WorkingHoursRepository
+from database.repositories.blacklist_repository import BlacklistRepository
+from database.repositories.member_working_hours_repository import MemberWorkingHoursRepository
 
 
 class ServiceFactory:
@@ -33,4 +35,6 @@ class ServiceFactory:
         working_hours_repo = WorkingHoursRepository(self.db)
         service_repo = ServiceRepository(self.db)
         team_repo = TeamRepository(self.db)
-        return BookingService(booking_repo, working_hours_repo, service_repo, team_repo)
+        blacklist_repo = BlacklistRepository(self.db)
+        member_working_hours_repo = MemberWorkingHoursRepository(self.db)
+        return BookingService(booking_repo, working_hours_repo, service_repo, team_repo, blacklist_repo, member_working_hours_repo)

@@ -1,40 +1,6 @@
-import { useState, useCallback } from 'react';
-import type { BookingFormData, TimeSlot } from '@/types';
-import { services } from '@/data/services';
-import { teamMembers } from '@/data/team';
-
-// Generate available time slots for a given date
-const generateTimeSlots = (date: Date, _serviceDuration: number): TimeSlot[] => {
-  const slots: TimeSlot[] = [];
-  const startHour = 9; // 9:00 AM
-  const endHour = 18; // 6:00 PM
-  const interval = 30; // 30 minutes intervals
-
-  // Check if it's Sunday (closed)
-  if (date.getDay() === 0) {
-    return slots;
-  }
-
-  // Check if it's Saturday (shorter hours)
-  const isSaturday = date.getDay() === 6;
-  const actualEndHour = isSaturday ? 14 : endHour;
-
-  for (let hour = startHour; hour < actualEndHour; hour++) {
-    for (let minute = 0; minute < 60; minute += interval) {
-      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      
-      // Simulate some slots being unavailable (randomly)
-      const isAvailable = Math.random() > 0.3;
-      
-      slots.push({
-        time: timeString,
-        available: isAvailable,
-      });
-    }
-  }
-
-  return slots;
-};
+import { useState, useCallback, useEffect } from 'react';
+import type { BookingFormData, TimeSlot, Service, TeamMember } from '@/types';
+import { api } from '@/lib/api';
 
 // Check if date is in the past
 const isPastDate = (date: Date): boolean => {
@@ -62,11 +28,39 @@ export const useBooking = () => {
     notes: '',
   });
 
+  const [services, setServices] = useState<Service[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<BookingFormData | null>(null);
+  const [confirmationCode, setConfirmationCode] = useState<string>('');
+
+  // Load services and team from API on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [servicesData, teamData] = await Promise.all([
+          api.services.getAll(),
+          api.team.getAll(),
+        ]);
+        // Filter active and convert price from cents to zloty
+        const activeServices = servicesData
+          .filter(s => s.is_active !== false)
+          .map(s => ({
+            ...s,
+            price: s.price / 100, // Convert from cents to zloty
+          }));
+        setServices(activeServices);
+        setTeamMembers(teamData.filter(m => m.is_active !== false));
+      } catch (err) {
+        console.error('Failed to load initial data:', err);
+      }
+    };
+    loadInitialData();
+  }, []);
 
   const selectedService = services.find(s => s.id === formData.serviceId);
 
@@ -76,18 +70,45 @@ export const useBooking = () => {
     setSuccess(false);
   }, []);
 
-  const loadTimeSlots = useCallback((date: Date) => {
-    if (!selectedService) return;
-    
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const slots = generateTimeSlots(date, selectedService.duration);
+  // Load available time slots from API
+  const loadTimeSlots = useCallback(async (date: Date) => {
+    if (!selectedService || !formData.serviceId) return;
+
+    setIsLoadingSlots(true);
+    setTimeSlots([]);
+    setFormData(prev => ({ ...prev, time: '' }));
+
+    try {
+      const dateStr = date.toISOString().split('T')[0];
+      const teamMemberId = formData.teamMemberId || undefined;
+
+      const response = await api.bookings.getAvailability(
+        dateStr,
+        formData.serviceId,
+        teamMemberId
+      );
+
+      // Convert API slots to TimeSlot format
+      const slots: TimeSlot[] = response.slots.map(slot => ({
+        time: slot.time,
+        available: slot.available_team_members.length > 0,
+      }));
+
       setTimeSlots(slots);
-      setIsLoading(false);
-    }, 500);
-  }, [selectedService]);
+    } catch (err) {
+      console.error('Failed to load time slots:', err);
+      setTimeSlots([]);
+    } finally {
+      setIsLoadingSlots(false);
+    }
+  }, [selectedService, formData.serviceId, formData.teamMemberId]);
+
+  // Reload time slots when team member changes (if date is already selected)
+  useEffect(() => {
+    if (formData.date && selectedService) {
+      loadTimeSlots(formData.date);
+    }
+  }, [formData.teamMemberId]);
 
   const validateForm = (): boolean => {
     if (!formData.customerName.trim()) {
@@ -154,37 +175,27 @@ export const useBooking = () => {
     setError(null);
 
     try {
-      // Real API call to backend
-      const response = await fetch('/api/v1/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customer_name: formData.customerName,
-          customer_email: formData.customerEmail,
-          customer_phone: formData.customerPhone,
-          service_id: formData.serviceId,
-          team_member_id: formData.teamMemberId && formData.teamMemberId.trim() !== '' ? formData.teamMemberId : null,
-          booking_date: formData.date?.toISOString().split('T')[0],
-          booking_time: formData.time,
-          notes: formData.notes && formData.notes.trim() !== '' ? formData.notes : null,
-        }),
+      const response = await api.bookings.create({
+        customer_name: formData.customerName,
+        customer_email: formData.customerEmail,
+        customer_phone: formData.customerPhone,
+        service_id: formData.serviceId,
+        team_member_id: formData.teamMemberId && formData.teamMemberId.trim() !== ''
+          ? formData.teamMemberId
+          : null,
+        booking_date: formData.date!.toISOString().split('T')[0],
+        booking_time: formData.time,
+        notes: formData.notes && formData.notes.trim() !== '' ? formData.notes : null,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Booking error:', errorData);
-        throw new Error(errorData.detail || JSON.stringify(errorData) || 'Błąd podczas rezerwacji');
-      }
-
-      // Save confirmed booking data before resetting
+      // Save confirmed booking data
       setConfirmedBooking({ ...formData });
-      
+      setConfirmationCode(response.confirmation_code);
+
       // Success
       setSuccess(true);
       setIsLoading(false);
-      
+
       // Reset form after successful booking
       setFormData({
         customerName: '',
@@ -199,8 +210,8 @@ export const useBooking = () => {
       setTimeSlots([]);
 
       return true;
-    } catch (err) {
-      setError('Wystąpił błąd podczas rezerwacji. Spróbuj ponownie.');
+    } catch (err: any) {
+      setError(err.message || 'Wystąpił błąd podczas rezerwacji. Spróbuj ponownie.');
       setIsLoading(false);
       return false;
     }
@@ -225,17 +236,20 @@ export const useBooking = () => {
     return confirmedService?.duration || 0;
   };
 
+  const selectedTeamMember = teamMembers.find(m => m.id === formData.teamMemberId);
+
   return {
     formData,
     updateFormData,
     timeSlots,
     loadTimeSlots,
     isLoading,
+    isLoadingSlots,
     error,
     success,
     submitBooking,
     selectedService,
-    selectedTeamMember: teamMembers.find(m => m.id === formData.teamMemberId),
+    selectedTeamMember,
     services,
     teamMembers,
     getTotalPrice,
@@ -244,6 +258,7 @@ export const useBooking = () => {
     confirmedBooking,
     confirmedService,
     confirmedTeamMember,
+    confirmationCode,
     getConfirmedTotalPrice,
     getConfirmedTotalDuration,
   };

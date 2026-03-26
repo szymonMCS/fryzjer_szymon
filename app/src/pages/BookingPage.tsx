@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { teamMembers } from '@/data/team';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -19,7 +18,8 @@ import {
   Sparkles,
   Shield,
   Phone,
-  User
+  User,
+  Key
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -32,17 +32,20 @@ export const BookingPage = () => {
     timeSlots,
     loadTimeSlots,
     isLoading,
+    isLoadingSlots,
     error,
     success,
     submitBooking,
     selectedService,
     services,
+    teamMembers,
     getTotalPrice,
     getTotalDuration,
     // Confirmed booking data for success screen
     confirmedBooking,
     confirmedService,
     confirmedTeamMember,
+    confirmationCode,
     getConfirmedTotalPrice,
     getConfirmedTotalDuration,
   } = useBooking();
@@ -216,11 +219,20 @@ export const BookingPage = () => {
                             : 'border-gray-200 bg-white hover:border-gray-300'
                         }`}
                       >
-                        <img
-                          src={member.image}
-                          alt={member.name}
-                          className="w-16 h-16 rounded-full object-cover mx-auto mb-3"
-                        />
+                        {member.image || member.image_url ? (
+                          <img
+                            src={member.image || member.image_url}
+                            alt={member.name}
+                            className="w-16 h-16 rounded-full object-cover mx-auto mb-3"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 mx-auto mb-3 flex items-center justify-center text-xl font-bold text-gray-600 ${(member.image || member.image_url) ? 'hidden' : ''}`}>
+                          {member.name.charAt(0)}
+                        </div>
                         <h3 className="font-bold">{member.name}</h3>
                         <p className={`text-sm mt-1 ${
                           formData.teamMemberId === member.id ? 'text-white/80' : 'text-gray-500'
@@ -315,9 +327,10 @@ export const BookingPage = () => {
                         </span>
                       </h3>
 
-                      {isLoading ? (
+                      {isLoadingSlots ? (
                         <div className="flex items-center justify-center py-12">
                           <Loader2 className="w-8 h-8 animate-spin" />
+                          <span className="ml-3 text-gray-500">Ładowanie dostępnych godzin...</span>
                         </div>
                       ) : timeSlots.length > 0 ? (
                         <div className="grid grid-cols-3 gap-3">
@@ -591,6 +604,16 @@ export const BookingPage = () => {
                         <p><span className="text-gray-500">Uwagi:</span> {confirmedBooking.notes}</p>
                       )}
                     </div>
+                    {confirmationCode && (
+                      <div className="mt-4 bg-black text-white p-4 rounded-xl text-center">
+                        <div className="flex items-center justify-center gap-2 mb-1">
+                          <Key className="w-4 h-4 opacity-80" />
+                          <p className="text-sm opacity-80">Kod potwierdzenia:</p>
+                        </div>
+                        <p className="text-2xl font-bold tracking-widest">{confirmationCode}</p>
+                        <p className="text-xs opacity-60 mt-1">Zachowaj ten kod do anulowania wizyty</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
