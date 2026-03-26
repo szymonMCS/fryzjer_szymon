@@ -10,6 +10,8 @@ from database.repositories.booking_repository import BookingRepository
 from database.repositories.working_hours_repository import WorkingHoursRepository
 from database.repositories.service_repository import ServiceRepository
 from database.repositories.team_repository import TeamRepository
+from database.repositories.blacklist_repository import BlacklistRepository
+from database.repositories.member_working_hours_repository import MemberWorkingHoursRepository
 from src.core.exceptions import NotFoundException, ConflictException
 
 
@@ -19,23 +21,24 @@ class BookingService(IBookingService):
         booking_repo: BookingRepository,
         working_hours_repo: WorkingHoursRepository,
         service_repo: ServiceRepository,
-        team_repo: TeamRepository
+        team_repo: TeamRepository,
+        blacklist_repo: Optional[BlacklistRepository] = None,
+        member_working_hours_repo: Optional[MemberWorkingHoursRepository] = None
     ):
         self._booking_repo = booking_repo
         self._working_hours_repo = working_hours_repo
         self._service_repo = service_repo
         self._team_repo = team_repo
+        self._blacklist_repo = blacklist_repo
+        self._member_working_hours_repo = member_working_hours_repo
 
     async def _generate_confirmation_code(self) -> str:
-        """Generuje unikalny 6-znakowy kod potwierdzenia."""
         max_attempts = 10
         for _ in range(max_attempts):
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            # Sprawdź czy kod już istnieje
             existing = await self._booking_repo.get_by_confirmation_code(code)
             if not existing:
                 return code
-        # Jeśli nie udało się wygenerować unikalnego kodu po 10 próbach, użyj timestamp
         return f"{int(time.time()) % 1000000:06d}"
 
     def _get_day_of_week(self, booking_date: date) -> str:
@@ -70,15 +73,28 @@ class BookingService(IBookingService):
         availability: Dict[str, List[str]] = {}
 
         for member in team_members:
-            working_hours = await self._working_hours_repo.get_by_day(day_of_week)
-            if not working_hours or working_hours.is_closed:
+            member_exception = None
+            if self._member_working_hours_repo:
+                member_exception = await self._member_working_hours_repo.get_by_member_and_date(
+                    member.id, booking_date
+                )
+            if member_exception and not member_exception.is_working:
                 continue
-            if not working_hours.start_time or not working_hours.end_time:
-                continue
+            if member_exception and member_exception.start_time and member_exception.end_time:
+                start_time = member_exception.start_time.strftime("%H:%M")
+                end_time = member_exception.end_time.strftime("%H:%M")
+            else:
+                working_hours = await self._working_hours_repo.get_by_day(day_of_week)
+                if not working_hours or working_hours.is_closed:
+                    continue
+                if not working_hours.start_time or not working_hours.end_time:
+                    continue
+                start_time = working_hours.start_time.strftime("%H:%M")
+                end_time = working_hours.end_time.strftime("%H:%M")
 
             existing_bookings = await self._booking_repo.get_by_team_member(member.id, booking_date)
-            start_minutes = self._time_to_minutes(working_hours.start_time.strftime("%H:%M"))
-            end_minutes = self._time_to_minutes(working_hours.end_time.strftime("%H:%M"))
+            start_minutes = self._time_to_minutes(start_time)
+            end_minutes = self._time_to_minutes(end_time)
             slot_duration = 30
             current_slot = start_minutes
 
@@ -104,9 +120,20 @@ class BookingService(IBookingService):
         team_member_id = data.get("team_member_id")
         booking_date = data.get("booking_date")
         booking_time = data.get("booking_time")
+        customer_phone = data.get("customer_phone")
 
         if not service_id or not booking_date or not booking_time:
             raise ValueError("service_id, booking_date, and booking_time are required")
+        
+        if self._blacklist_repo:
+            customer_email = data.get("customer_email")
+            is_blacklisted = await self._blacklist_repo.is_blacklisted(
+                phone_number=customer_phone, 
+                email=customer_email
+            )
+            if is_blacklisted:
+                raise ConflictException("Ten numer telefonu lub email został zablokowany. Skontaktuj się z salonem.")
+        
         service = await self._service_repo.get(service_id)
         if not service:
             raise NotFoundException(f"Service {service_id} not found")
@@ -157,11 +184,9 @@ class BookingService(IBookingService):
 
     async def get_upcoming_bookings(self, limit: int = 50) -> List[Booking]:
         today = date.today()
-        # Bezpieczne obliczanie daty za rok (obsługa dat przestępnych)
         try:
             end_date = today.replace(year=today.year + 1)
         except ValueError:
-            # 29 lutego - użyj 28 lutego
             end_date = today.replace(year=today.year + 1, day=28)
         bookings = await self._booking_repo.get_by_date_range(today, end_date)
         return bookings[:limit]
@@ -174,7 +199,6 @@ class BookingService(IBookingService):
         status: Optional[str] = None,
         limit: int = 50
     ) -> List[Booking]:
-        # Domyślnie pobierz rezerwacje od dzisiaj
         if not start_date:
             start_date = date.today()
         if not end_date:
@@ -185,10 +209,16 @@ class BookingService(IBookingService):
 
         bookings = await self._booking_repo.get_by_date_range(start_date, end_date)
 
-        # Filtrowanie w pamięci (można zoptymalizować w przyszłości przez SQL)
         if team_member_id:
             bookings = [b for b in bookings if b.team_member_id == team_member_id]
         if status:
             bookings = [b for b in bookings if b.status == status]
 
         return bookings[:limit]
+
+    async def update_booking_status(self, booking_id: UUID, status: str) -> Optional[Booking]:
+        booking = await self._booking_repo.get(booking_id)
+        if not booking:
+            return None
+        await self._booking_repo.update(booking, {"status": status})
+        return await self._booking_repo.get(booking_id)
