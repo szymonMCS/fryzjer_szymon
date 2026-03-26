@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { services } from '@/data/services';
+import { api } from '@/lib/api';
+import type { Service } from '@/types';
 import { Clock, ArrowRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -16,8 +17,29 @@ const serviceImages = [
 ];
 
 export const Services = () => {
+  const [services, setServices] = useState<Service[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
+
+  // Load services from API
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const data = await api.services.getAll();
+        // Filter active and convert price from cents to zloty
+        const activeServices = data
+          .filter(s => s.is_active !== false)
+          .map(s => ({
+            ...s,
+            price: s.price / 100, // Convert from cents to zloty
+          }));
+        setServices(activeServices);
+      } catch (err) {
+        console.error('Failed to load services:', err);
+      }
+    };
+    loadServices();
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -71,7 +93,7 @@ export const Services = () => {
             <Sparkles className="w-4 h-4" />
             Nasza oferta
           </span>
-          <h2 className="text-5xl md:text-6xl font-bold mb-6">Usługi</h2>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-6">Usługi</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Oferujemy kompleksowe usługi fryzjerskie dla mężczyzn. 
             Od klasycznych strzyżeń po nowoczesne koloryzacje.

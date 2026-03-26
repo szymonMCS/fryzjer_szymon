@@ -2,15 +2,30 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { teamMembers } from '@/data/team';
+import { api } from '@/lib/api';
+import type { TeamMember } from '@/types';
 import { ChevronLeft, ChevronRight, Star, Instagram, Scissors } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export const Team = () => {
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
+
+  // Load team from API
+  useEffect(() => {
+    const loadTeam = async () => {
+      try {
+        const data = await api.team.getAll();
+        setTeamMembers(data.filter(m => m.is_active !== false));
+      } catch (err) {
+        console.error('Failed to load team:', err);
+      }
+    };
+    loadTeam();
+  }, []);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -53,19 +68,26 @@ export const Team = () => {
 
   // Auto-slide
   useEffect(() => {
+    if (teamMembers.length === 0) return;
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % teamMembers.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [teamMembers.length]);
 
   const nextSlide = () => {
+    if (teamMembers.length === 0) return;
     setActiveIndex((prev) => (prev + 1) % teamMembers.length);
   };
 
   const prevSlide = () => {
+    if (teamMembers.length === 0) return;
     setActiveIndex((prev) => (prev - 1 + teamMembers.length) % teamMembers.length);
   };
+
+  if (teamMembers.length === 0) {
+    return null; // or loading spinner
+  }
 
   return (
     <section
@@ -79,7 +101,7 @@ export const Team = () => {
           <span className="inline-block text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
             Nasi eksperci
           </span>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-6">
             Poznaj nasz zespół
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -120,7 +142,7 @@ export const Team = () => {
                       {/* Image Side */}
                       <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
                         <img
-                          src={member.image}
+                          src={member.image || member.image_url || '/images/avatar-placeholder.jpg'}
                           alt={member.name}
                           className="w-full h-full object-cover"
                         />
@@ -161,7 +183,7 @@ export const Team = () => {
 
                         {/* Description */}
                         <p className="text-gray-600 text-lg leading-relaxed mb-8">
-                          {member.description}
+                          {member.description || member.bio}
                         </p>
 
                         {/* Specialties */}

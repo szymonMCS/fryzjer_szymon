@@ -58,13 +58,21 @@ class AdminAuthService:
             value=token,
             httponly=True,
             samesite="lax",
+            secure=False,
+            path="/",
             max_age=self.COOKIE_MAX_AGE
         )
         
         return {"success": True}
     
     async def logout(self, response: Response) -> dict:
-        response.delete_cookie(self.COOKIE_NAME)
+        response.delete_cookie(
+            key=self.COOKIE_NAME,
+            path="/",
+            httponly=True,
+            samesite="lax",
+            secure=False
+        )
         return {"success": True}
     
     async def verify_session(self, request: Request) -> bool:

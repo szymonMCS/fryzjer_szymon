@@ -44,7 +44,7 @@ const generateResponse = (userMessage: string, _context: Record<string, unknown>
   
   // Services and pricing
   if (lowerMessage.match(/cena|cennik|usługa|ile kosztuje|ceny|koszt/)) {
-    return `**Nasz cennik usług:**\n\n${services.map(s => `• **${s.name}** - ${s.price} PLN (${s.duration} min)`).join('\n')}\n\nCzy chcesz dowiedzieć się więcej o konkretnej usłudze?`;
+    return `**Nasz cennik usług:**\n\n${services.map((s: {name: string, price: number, duration: number}) => `• **${s.name}** - ${s.price} PLN (${s.duration} min)`).join('\n')}\n\nCzy chcesz dowiedzieć się więcej o konkretnej usłudze?`;
   }
   
   // Specific service inquiry

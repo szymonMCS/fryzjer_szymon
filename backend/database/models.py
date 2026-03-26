@@ -32,7 +32,6 @@ class Service(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     bookings: Mapped[List["Booking"]] = relationship("Booking", back_populates="service")
-    team_member_services: Mapped[List["TeamMemberService"]] = relationship("TeamMemberService", back_populates="service", cascade="all, delete-orphan")
 
 
 class TeamMember(Base):
@@ -43,37 +42,38 @@ class TeamMember(Base):
     role: Mapped[str] = mapped_column(String(100), nullable=False)
     bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    specialties: Mapped[list] = mapped_column(JSON, default=list)
+    specialties: Mapped[list] = mapped_column(JSON, default=list) 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
 
     bookings: Mapped[List["Booking"]] = relationship("Booking", back_populates="team_member")
-    working_hours: Mapped[List["WorkingHours"]] = relationship("WorkingHours", back_populates="team_member", cascade="all, delete-orphan")
-    team_member_services: Mapped[List["TeamMemberService"]] = relationship("TeamMemberService", back_populates="team_member", cascade="all, delete-orphan")
-
-
-class TeamMemberService(Base):
-    __tablename__ = "team_member_services"
-
-    team_member_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("team_members.id", ondelete="CASCADE"), primary_key=True)
-    service_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("services.id", ondelete="CASCADE"), primary_key=True)
-
-    team_member: Mapped["TeamMember"] = relationship("TeamMember", back_populates="team_member_services")
-    service: Mapped["Service"] = relationship("Service", back_populates="team_member_services")
+    working_hours_exceptions: Mapped[List["MemberWorkingHours"]] = relationship("MemberWorkingHours", back_populates="team_member", cascade="all, delete-orphan")
 
 
 class WorkingHours(Base):
     __tablename__ = "working_hours"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    team_member_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("team_members.id", ondelete="CASCADE"), nullable=True)
-    day_of_week: Mapped[str] = mapped_column(String(20), nullable=False)
+    day_of_week: Mapped[str] = mapped_column(String(20), nullable=False, unique=True)  
     start_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
     end_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
     is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    team_member: Mapped[Optional["TeamMember"]] = relationship("TeamMember", back_populates="working_hours")
+
+class MemberWorkingHours(Base):
+    __tablename__ = "member_working_hours"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    team_member_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("team_members.id", ondelete="CASCADE"), nullable=False)
+    work_date: Mapped[date] = mapped_column(Date, nullable=False)
+    is_working: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)  
+    start_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True) 
+    end_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    reason: Mapped[Optional[str]] = mapped_column(String(100), nullable=True) 
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+    team_member: Mapped["TeamMember"] = relationship("TeamMember", back_populates="working_hours_exceptions")
 
 
 class Booking(Base):
@@ -107,3 +107,14 @@ class KnowledgeChunk(Base):
     embedding: Mapped[Optional[Any]] = mapped_column(Vector(1536), nullable=True)
     source: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
+class BlacklistedPhone(Base):
+    __tablename__ = "blacklisted_phones"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    phone_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, unique=True, index=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
