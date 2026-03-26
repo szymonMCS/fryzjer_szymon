@@ -38,16 +38,17 @@ export const Testimonials = () => {
       ref={sectionRef}
       className="section py-24 bg-[#F9F9F9] overflow-hidden"
     >
-      <div className="container-custom mb-12">
+      <div className="container-custom mb-16">
         {/* Section Header */}
         <div className="text-center">
-          <span className="inline-block text-sm font-medium text-gray-500 uppercase tracking-wider mb-4 reveal-up">
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+            <Quote className="w-4 h-4" />
             Opinie klientów
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 reveal-up">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-6">
             Co mówią nasi klienci
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto reveal-up">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Zadowolenie klientów jest dla nas najważniejsze. Sprawdź, co o nas
             mówią.
           </p>
@@ -95,16 +96,16 @@ export const Testimonials = () => {
               {/* Author */}
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center text-white font-bold">
-                  {review.customerName.charAt(0)}
+                  {review.customer_name.charAt(0)}
                 </div>
                 <div>
-                  <h4 className="font-semibold">{review.customerName}</h4>
+                  <h4 className="font-semibold">{review.customer_name}</h4>
                   <p className="text-sm text-gray-500">
-                    {new Date(review.date).toLocaleDateString('pl-PL', {
+                    {review.created_at ? new Date(review.created_at).toLocaleDateString('pl-PL', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
-                    })}
+                    }) : ''}
                   </p>
                 </div>
               </div>

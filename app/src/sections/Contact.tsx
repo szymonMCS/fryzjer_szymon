@@ -73,13 +73,14 @@ export const Contact = () => {
       <div className="container-custom">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <span className="inline-block text-sm font-medium text-gray-500 uppercase tracking-wider mb-4 reveal-up">
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+            <MapPin className="w-4 h-4" />
             Kontakt
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 reveal-up">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-black mb-6">
             Skontaktuj się z nami
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto reveal-up">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Masz pytania? Chętnie na nie odpowiemy. Skontaktuj się z nami
             telefonicznie, mailowo lub odwiedź nasz salon.
           </p>

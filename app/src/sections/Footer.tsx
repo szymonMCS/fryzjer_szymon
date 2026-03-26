@@ -145,10 +145,18 @@ export const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-white/50 text-sm">
-            © {new Date().getFullYear()} Fryzjer Męski Szymon. Wszelkie prawa
-            zastrzeżone.
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-white/50 text-sm">
+              © {new Date().getFullYear()} Fryzjer Męski Szymon. Wszelkie prawa
+              zastrzeżone.
+            </p>
+            <Link
+              to="/admin/login"
+              className="text-white/30 hover:text-white/70 transition-colors text-sm"
+            >
+              Panel admina
+            </Link>
+          </div>
           <button
             onClick={scrollToTop}
             className="flex items-center gap-2 text-white/50 hover:text-white transition-colors text-sm"
