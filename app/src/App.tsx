@@ -21,6 +21,7 @@ import TeamPage from '@/pages/admin/TeamPage';
 import BookingsPage from '@/pages/admin/BookingsPage';
 import BlacklistPage from '@/pages/admin/BlacklistPage';
 import MemberSchedulePage from '@/pages/admin/MemberSchedulePage';
+import KnowledgeBasePage from '@/pages/admin/KnowledgeBasePage';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -85,6 +86,7 @@ function App() {
           <Route path="team" element={<TeamPage />} />
           <Route path="schedule" element={<MemberSchedulePage />} />
           <Route path="blacklist" element={<BlacklistPage />} />
+          <Route path="knowledge" element={<KnowledgeBasePage />} />
         </Route>
       </Routes>
     </BrowserRouter>
