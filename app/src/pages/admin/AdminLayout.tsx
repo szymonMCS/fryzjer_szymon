@@ -9,7 +9,8 @@ import {
   Menu,
   X,
   Ban,
-  CalendarClock
+  CalendarClock,
+  Brain
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -20,6 +21,7 @@ const navItems = [
   { path: '/admin/team', label: 'Zespół', icon: Users },
   { path: '/admin/schedule', label: 'Grafik', icon: CalendarClock },
   { path: '/admin/blacklist', label: 'Czarna lista', icon: Ban },
+  { path: '/admin/knowledge', label: 'Baza Wiedzy', icon: Brain },
 ];
 
 export default function AdminLayout() {

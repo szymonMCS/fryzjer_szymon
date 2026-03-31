@@ -107,6 +107,7 @@ class KnowledgeChunk(Base):
     embedding: Mapped[Optional[Any]] = mapped_column(Vector(1536), nullable=True)
     source: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
 
 class BlacklistedPhone(Base):

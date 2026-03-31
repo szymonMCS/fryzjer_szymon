@@ -7,3 +7,7 @@ pydantic-settings
 python-dotenv
 email-validator
 mcp
+httpx
+tenacity
+openai
+tqdm
