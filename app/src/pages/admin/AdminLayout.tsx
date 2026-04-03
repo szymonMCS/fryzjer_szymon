@@ -13,6 +13,7 @@ import {
   Brain
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Toaster } from 'sonner';
 
 const navItems = [
   { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -77,7 +78,9 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <>
+      <Toaster position="top-right" richColors />
+      <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <aside
         className={`bg-gray-900 text-white transition-all duration-300 flex flex-col ${
@@ -140,5 +143,6 @@ export default function AdminLayout() {
         </div>
       </main>
     </div>
+    </>
   );
 }

@@ -48,7 +48,7 @@ export const Footer = () => {
               <span className="text-2xl font-bold">SZYMON</span>
             </a>
             <p className="text-white/70 mb-6">
-              Profesjonalny salon fryzjerski dla mężczyzn w Nysie. Twój styl, nasza
+              Profesjonalny salon fryzjerski dla mężczyzn we Wrocławiu. Twój styl, nasza
               pasja.
             </p>
             <div className="flex gap-3">
@@ -124,8 +124,8 @@ export const Footer = () => {
           <div>
             <h3 className="text-lg font-bold mb-6">Kontakt</h3>
             <div className="space-y-3 text-white/70">
-              <p>ul. Gałczyńskiego 47a</p>
-              <p>48-303 Nysa</p>
+              <p>ul. Białowieska 105</p>
+              <p>54-234 Wrocław</p>
               <p className="mt-4">
                 <a href="tel:+48123456789" className="hover:text-white transition-colors">
                   +48 123 456 789

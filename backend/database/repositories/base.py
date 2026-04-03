@@ -45,3 +45,7 @@ class BaseRepository(Generic[ModelType]):
     async def exists(self, id: UUID) -> bool:
         result = await self._db.execute(select(func.count()).where(self._model.id == id))
         return result.scalar() > 0
+    
+    async def count(self) -> int:
+        result = await self._db.execute(select(func.count()).select_from(self._model))
+        return result.scalar() or 0

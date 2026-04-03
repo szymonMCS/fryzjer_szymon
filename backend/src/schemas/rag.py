@@ -44,71 +44,11 @@ class RAGSearchResponse(BaseModel):
     query: str
 
 
-class QueryRewriteRequest(BaseModel):
-    query: str
-    history: Optional[List[dict]] = None
-
-
-class QueryRewriteResponse(BaseModel):
-    original: str
-    rewritten: str
-
-
-class KnowledgeChunkBase(BaseModel):
-    category: str = Field(..., min_length=1, max_length=50)
-    title: str = Field(..., min_length=1, max_length=200)
-    content: str = Field(..., min_length=1)
-    source: Optional[str] = Field(default=None, max_length=100)
-
-
-class KnowledgeChunkCreate(KnowledgeChunkBase):
-    pass
-
-
-class KnowledgeChunkUpdate(BaseModel):
-    category: Optional[str] = Field(default=None, max_length=50)
-    title: Optional[str] = Field(default=None, max_length=200)
-    content: Optional[str] = Field(default=None)
-    source: Optional[str] = Field(default=None, max_length=100)
-
-
-class KnowledgeChunkResponse(KnowledgeChunkBase):
-    id: UUID
-    created_at: str
-    updated_at: str
-    has_embedding: bool
-
-    class Config:
-        from_attributes = True
-
-
-class KnowledgeChunkList(BaseModel):
-    items: List[KnowledgeChunkResponse]
-    total: int
-    page: int
-    page_size: int
-    pages: int
-
-
-class KnowledgeCategoriesResponse(BaseModel):
-    categories: List[str]
-
-
 class KnowledgeSyncStatus(BaseModel):
     last_sync: Optional[str]
     pending_changes: int
     total_chunks: int
     is_syncing: bool
-
-
-class KnowledgeRebuildRequest(BaseModel):
-    confirm: bool = Field(..., description="Potwierdzenie operacji")
-
-
-class KnowledgeRebuildResponse(BaseModel):
-    success: bool
-    chunks_processed: int
-    message: str
 
 
 class RAGHealthResponse(BaseModel):

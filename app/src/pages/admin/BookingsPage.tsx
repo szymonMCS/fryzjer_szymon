@@ -20,6 +20,7 @@ interface Booking {
   team_member_name: string | null;
   booking_date: string;
   booking_time: string;
+  duration: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
   notes: string | null;
   confirmation_code: string;
@@ -111,12 +112,25 @@ export default function BookingsPage() {
     return matchesSearch;
   });
 
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   const formatDate = (dateStr: string) => {
     try {
-      return format(new Date(dateStr), 'dd MMM yyyy', { locale: pl });
+      return format(parseLocalDate(dateStr), 'dd MMM yyyy', { locale: pl });
     } catch {
       return dateStr;
     }
+  };
+
+  const isBookingCompleted = (booking: Booking) => {
+    const [hours, minutes] = booking.booking_time.split(':').map(Number);
+    const [year, month, day] = booking.booking_date.split('-').map(Number);
+    const bookingDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    const endDate = new Date(bookingDate.getTime() + booking.duration * 60000);
+    return new Date() >= endDate;
   };
 
   return (
@@ -272,12 +286,13 @@ export default function BookingsPage() {
                               <XCircle className="h-4 w-4" />
                             </Button>
                           )}
-                          {booking.status === 'confirmed' && (
+                          {booking.status === 'confirmed' && isBookingCompleted(booking) && (
                             <Button
                               size="sm"
                               variant="ghost"
                               className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                               onClick={() => updateStatus(booking.id, 'completed')}
+                              title="Oznacz jako zrealizowaną"
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
