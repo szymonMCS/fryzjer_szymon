@@ -78,6 +78,8 @@ async def create_booking(
                 "name": team_member.name,
                 "role": team_member.role,
             } if team_member else None,
+            "team_member_id": team_member.id if team_member else None,
+            "team_member_name": team_member.name if team_member else None,
             "booking_date": booking.booking_date,
             "booking_time": booking.booking_time,
             "duration": booking.duration,
@@ -146,6 +148,8 @@ async def list_bookings(
                 "name": team_member.name,
                 "role": team_member.role,
             } if team_member else None,
+            "team_member_id": team_member.id if team_member else None,
+            "team_member_name": team_member.name if team_member else None,
             "booking_date": booking.booking_date,
             "booking_time": booking.booking_time,
             "duration": booking.duration,
@@ -189,6 +193,8 @@ async def update_booking_status(
             "name": team_member.name,
             "role": team_member.role,
         } if team_member else None,
+        "team_member_id": team_member.id if team_member else None,
+        "team_member_name": team_member.name if team_member else None,
         "booking_date": booking.booking_date,
         "booking_time": booking.booking_time,
         "duration": booking.duration,
@@ -197,3 +203,17 @@ async def update_booking_status(
         "notes": booking.notes,
         "created_at": booking.created_at,
     }
+
+@router.delete("/admin/bookings/{booking_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_booking(
+    booking_id: UUID,
+    booking_service: IBookingService = Depends(get_booking_service),
+    admin: bool = Depends(get_current_admin)
+):
+    deleted = await booking_service.delete_booking(booking_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Rezerwacja o ID {booking_id} nie została znaleziona"
+        )
+    return None
