@@ -6,7 +6,7 @@ import { MapPin, Phone, Mail, Clock, Facebook, Instagram } from 'lucide-react';
 gsap.registerPlugin(ScrollTrigger);
 
 const contactInfo = {
-  address: 'ul. Gałczyńskiego 47a, 48-303 Nysa',
+  address: 'ul. Białowieska 105, 54-234 Wrocław',
   phone: '+48 123 456 789',
   email: 'kontakt@fryzjerszymon.pl',
   hours: [
@@ -98,7 +98,7 @@ export const Contact = () => {
                 <h3 className="text-lg font-bold mb-1">Adres</h3>
                 <p className="text-gray-600">{contactInfo.address}</p>
                 <a
-                  href="https://maps.google.com/?q=Gałczyńskiego+47a+Nysa"
+                  href="https://maps.google.com/?q=Białowieska+105+Wrocław"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-black underline mt-2 inline-block hover:no-underline"

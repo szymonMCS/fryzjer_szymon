@@ -85,7 +85,8 @@ Zwróć fragmenty w formacie JSON."""
             ))
         await self.db.commit()
 
-    async def ingest_file(self, file_path: Path, rebuild: bool = False):
+    async def ingest_file(self, file_path: Path | str, rebuild: bool = False):
+        file_path = Path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"Plik nie istnieje: {file_path}")
 

@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { CalendarIcon, Plus, Trash2, Clock, UserX, UserCheck, CalendarDays } from 'lucide-react';
 import { api, type TeamMember, type MemberWorkingHours } from '@/lib/api';
@@ -338,7 +338,10 @@ export default function MemberSchedulePage() {
                       {getMemberName(exc.team_member_id)}
                     </TableCell>
                     <TableCell>
-                      {format(parseISO(exc.work_date), 'dd MMM yyyy', { locale: pl })}
+                      {(() => {
+                        const [year, month, day] = exc.work_date.split('-').map(Number);
+                        return format(new Date(year, month - 1, day), 'dd MMM yyyy', { locale: pl });
+                      })()}
                     </TableCell>
                     <TableCell>{getExceptionTypeLabel(exc)}</TableCell>
                     <TableCell>

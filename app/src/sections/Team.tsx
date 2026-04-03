@@ -129,8 +129,11 @@ export const Team = () => {
           {/* Cards Container */}
           <div className="overflow-hidden px-4">
             <div 
-              className="flex transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-              style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+              className="flex transition-transform duration-700"
+              style={{
+                transform: `translateX(-${activeIndex * 100}%)`,
+                transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
             >
               {teamMembers.map((member) => (
                 <div

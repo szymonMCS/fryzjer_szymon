@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import {
   Dialog,
   DialogContent,
@@ -13,87 +11,54 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import {
   Loader2,
-  Search,
   RefreshCw,
-  Database,
   FileText,
-  Tag,
   CheckCircle,
   AlertCircle,
-  Plus,
-  Trash2,
+  Upload,
   Edit,
+  Trash2,
   Brain,
+  Save,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  getKnowledgeChunks,
-  getKnowledgeChunk,
-  createKnowledgeChunk,
-  updateKnowledgeChunk,
-  deleteKnowledgeChunk,
-  regenerateEmbedding,
-  getCategories,
-  getSyncStatus,
+  getKnowledgeFiles,
+  getKnowledgeFile,
+  updateKnowledgeFile,
+  deleteKnowledgeFile,
+  uploadKnowledgeFile,
+  ingestKnowledgeFile,
+  syncKnowledgeFiles,
   getRAGHealth,
-  type KnowledgeChunk,
+  getSyncStatus,
+  type KnowledgeFile,
 } from '@/services/ragApi';
 
-const ITEMS_PER_PAGE = 20;
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
 
-const CATEGORY_LABELS: Record<string, string> = {
-  services: 'Usługi',
-  team: 'Zespół',
-  hours: 'Godziny',
-  booking: 'Rezerwacje',
-  contact: 'Kontakt',
-  faq: 'FAQ',
-  haircare: 'Wiedza fryzjerska',
-  salon_info: 'O salonie',
-  general: 'Ogólne',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  services: 'bg-blue-100 text-blue-800',
-  team: 'bg-green-100 text-green-800',
-  hours: 'bg-yellow-100 text-yellow-800',
-  booking: 'bg-purple-100 text-purple-800',
-  contact: 'bg-pink-100 text-pink-800',
-  faq: 'bg-orange-100 text-orange-800',
-  haircare: 'bg-teal-100 text-teal-800',
-  salon_info: 'bg-indigo-100 text-indigo-800',
-  general: 'bg-gray-100 text-gray-800',
-};
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('pl-PL');
+  } catch {
+    return iso;
+  }
+}
 
 export function KnowledgeBasePage() {
-  const { token } = useAuth();
-
-  // State
-  const [chunks, setChunks] = useState<KnowledgeChunk[]>([]);
+  const [files, setFiles] = useState<KnowledgeFile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [categories, setCategories] = useState<string[]>([]);
-  const [syncStatus, setSyncStatus] = useState<{
-    last_sync: string | null;
-    pending_changes: number;
-    total_chunks: number;
-    is_syncing: boolean;
-  } | null>(null);
   const [ragHealth, setRagHealth] = useState<{
     status: string;
     total_chunks: number;
@@ -101,47 +66,43 @@ export function KnowledgeBasePage() {
     categories: string[];
     openai_api_configured: boolean;
   } | null>(null);
+  const [syncStatus, setSyncStatus] = useState<{
+    last_sync: string | null;
+    pending_changes: number;
+    total_chunks: number;
+    is_syncing: boolean;
+  } | null>(null);
 
-  // Dialog state
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isRebuildDialogOpen, setIsRebuildDialogOpen] = useState(false);
-  const [selectedChunk, setSelectedChunk] = useState<KnowledgeChunk | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
+  // Upload dialog
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    category: 'general',
-    title: '',
-    content: '',
-    source: '',
-  });
+  // Edit dialog
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingFile, setEditingFile] = useState<KnowledgeFile | null>(null);
+  const [fileContent, setFileContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Load data
+  // Delete dialog
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deletingFile, setDeletingFile] = useState<KnowledgeFile | null>(null);
+
+  // Ingest / sync state
+  const [ingestingFile, setIngestingFile] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const loadData = async () => {
-    if (!token) return;
-
     try {
       setLoading(true);
-      const [chunksData, categoriesData, syncData, healthData] = await Promise.all([
-        getKnowledgeChunks(
-          token,
-          page,
-          ITEMS_PER_PAGE,
-          selectedCategory === 'all' ? undefined : selectedCategory,
-          searchQuery || undefined
-        ),
-        getCategories(token),
-        getSyncStatus(token),
+      const [filesData, healthData, syncData] = await Promise.all([
+        getKnowledgeFiles(),
         getRAGHealth(),
+        getSyncStatus(),
       ]);
-
-      setChunks(chunksData.items);
-      setTotalPages(chunksData.pages);
-      setCategories(categoriesData.categories);
-      setSyncStatus(syncData);
+      setFiles(filesData.items);
       setRagHealth(healthData);
+      setSyncStatus(syncData);
     } catch (error) {
       toast.error('Błąd podczas ładowania danych');
       console.error(error);
@@ -152,111 +113,93 @@ export function KnowledgeBasePage() {
 
   useEffect(() => {
     loadData();
-  }, [token, page, selectedCategory]);
+  }, []);
 
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery !== undefined) {
-        loadData();
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const handleCreate = async () => {
-    if (!token) return;
-
+  const handleUpload = async () => {
+    if (!uploadFile) return;
     try {
-      await createKnowledgeChunk(token, formData);
-      toast.success('Chunk utworzony pomyślnie');
-      setIsEditDialogOpen(false);
+      setIsUploading(true);
+      const result = await uploadKnowledgeFile(uploadFile);
+      toast.success(result.message);
+      setIsUploadOpen(false);
+      setUploadFile(null);
       loadData();
-    } catch (error) {
-      toast.error('Błąd podczas tworzenia chunka');
+    } catch (error: any) {
+      toast.error(error.message || 'Błąd podczas wgrywania pliku');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleUpdate = async () => {
-    if (!token || !selectedChunk) return;
-
+  const openEdit = async (file: KnowledgeFile) => {
     try {
-      await updateKnowledgeChunk(token, selectedChunk.id, formData, true);
-      toast.success('Chunk zaktualizowany pomyślnie');
-      setIsEditDialogOpen(false);
-      loadData();
-    } catch (error) {
-      toast.error('Błąd podczas aktualizacji chunka');
+      const data = await getKnowledgeFile(file.name);
+      setEditingFile(file);
+      setFileContent(data.content);
+      setIsEditOpen(true);
+    } catch (error: any) {
+      toast.error(error.message || 'Błąd podczas pobierania pliku');
     }
+  };
+
+  const handleSave = async () => {
+    if (!editingFile) return;
+    try {
+      setIsSaving(true);
+      await updateKnowledgeFile(editingFile.name, fileContent);
+      toast.success('Plik zapisany pomyślnie');
+      setIsEditOpen(false);
+      setEditingFile(null);
+      setFileContent('');
+    } catch (error: any) {
+      toast.error(error.message || 'Błąd podczas zapisywania pliku');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const openDelete = (file: KnowledgeFile) => {
+    setDeletingFile(file);
+    setIsDeleteOpen(true);
   };
 
   const handleDelete = async () => {
-    if (!token || !selectedChunk) return;
-
+    if (!deletingFile) return;
     try {
-      await deleteKnowledgeChunk(token, selectedChunk.id);
-      toast.success('Chunk usunięty pomyślnie');
-      setIsDeleteDialogOpen(false);
+      await deleteKnowledgeFile(deletingFile.name);
+      toast.success('Plik usunięty pomyślnie');
+      setIsDeleteOpen(false);
+      setDeletingFile(null);
       loadData();
-    } catch (error) {
-      toast.error('Błąd podczas usuwania chunka');
+    } catch (error: any) {
+      toast.error(error.message || 'Błąd podczas usuwania pliku');
     }
   };
 
-  const handleRegenerateEmbedding = async (chunkId: string) => {
-    if (!token) return;
-
+  const handleIngest = async (file: KnowledgeFile) => {
+    setIngestingFile(file.name);
     try {
-      setIsRegenerating(true);
-      await regenerateEmbedding(token, chunkId);
-      toast.success('Embedding zregenerowany pomyślnie');
-      loadData();
-    } catch (error) {
-      toast.error('Błąd podczas regenerowania embeddingu');
+      const result = await ingestKnowledgeFile(file.name);
+      toast.success(result.message);
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Błąd podczas przetwarzania pliku');
     } finally {
-      setIsRegenerating(false);
+      setIngestingFile(null);
     }
   };
 
-  const openCreateDialog = () => {
-    setIsCreating(true);
-    setSelectedChunk(null);
-    setFormData({
-      category: 'general',
-      title: '',
-      content: '',
-      source: '',
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const openEditDialog = async (chunk: KnowledgeChunk) => {
-    if (!token) return;
-
+  const handleSync = async () => {
+    setIsSyncing(true);
     try {
-      const fullChunk = await getKnowledgeChunk(token, chunk.id);
-      setIsCreating(false);
-      setSelectedChunk(fullChunk);
-      setFormData({
-        category: fullChunk.category,
-        title: fullChunk.title,
-        content: fullChunk.content,
-        source: fullChunk.source || '',
-      });
-      setIsEditDialogOpen(true);
-    } catch (error) {
-      toast.error('Błąd podczas pobierania szczegółów');
+      const result = await syncKnowledgeFiles();
+      toast.success(result.message);
+      await loadData();
+    } catch (error: any) {
+      toast.error(error.message || 'Błąd podczas synchronizacji');
+    } finally {
+      setIsSyncing(false);
     }
-  };
-
-  const openDeleteDialog = (chunk: KnowledgeChunk) => {
-    setSelectedChunk(chunk);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('pl-PL');
   };
 
   return (
@@ -266,7 +209,7 @@ export function KnowledgeBasePage() {
         <div>
           <h1 className="text-3xl font-bold">Baza Wiedzy RAG</h1>
           <p className="text-muted-foreground">
-            Zarządzaj wiedzą chatbota i embeddingami
+            Zarządzaj plikami wiedzy chatbota w formacie Markdown
           </p>
         </div>
         <div className="flex gap-2">
@@ -274,9 +217,13 @@ export function KnowledgeBasePage() {
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Odśwież
           </Button>
-          <Button onClick={openCreateDialog}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nowy chunk
+          <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
+            <RotateCcw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+            {isSyncing ? 'Synchronizacja...' : 'Zsynchronizuj'}
+          </Button>
+          <Button onClick={() => setIsUploadOpen(true)}>
+            <Upload className="w-4 h-4 mr-2" />
+            Wgraj plik
           </Button>
         </div>
       </div>
@@ -286,28 +233,23 @@ export function KnowledgeBasePage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Wszystkich chunków
+              Plików wiedzy
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {ragHealth?.total_chunks || 0}
-            </div>
+            <div className="text-2xl font-bold">{files.length}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Z embeddingami
+              Chunków w bazie
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
-              {ragHealth?.chunks_with_embeddings || 0}
-              {ragHealth && ragHealth.chunks_with_embeddings === ragHealth.total_chunks && (
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              )}
+              {ragHealth?.total_chunks || 0}
             </div>
           </CardContent>
         </Card>
@@ -349,239 +291,182 @@ export function KnowledgeBasePage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Szukaj w bazie wiedzy..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Wszystkie kategorie" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Wszystkie kategorie</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {CATEGORY_LABELS[cat] || cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Chunks List */}
+      {/* Files List */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Database className="w-5 h-5" />
-            Chunki wiedzy ({chunks.length})
+            <FileText className="w-5 h-5" />
+            Pliki wiedzy ({files.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[500px]">
             <div className="space-y-4">
-              {chunks.map((chunk) => (
+              {files.map((file) => (
                 <div
-                  key={chunk.id}
+                  key={file.name}
                   className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        className={
-                          CATEGORY_COLORS[chunk.category] ||
-                          'bg-gray-100 text-gray-800'
-                        }
-                      >
-                        {CATEGORY_LABELS[chunk.category] || chunk.category}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {chunk.source}
-                      </span>
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-8 h-8 text-muted-foreground" />
+                      <div>
+                        <h3 className="font-medium">{file.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {formatBytes(file.size)} • Zmodyfikowano: {formatDate(file.modified_at)}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRegenerateEmbedding(chunk.id)}
-                        disabled={isRegenerating}
-                        title="Regeneruj embedding"
+                        onClick={() => handleIngest(file)}
+                        disabled={ingestingFile === file.name || isSyncing}
+                        title="Przetwórz plik (ingest)"
                       >
-                        <Brain className="w-4 h-4" />
+                        {ingestingFile === file.name ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Brain className="w-4 h-4" />
+                        )}
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => openEditDialog(chunk)}
-                        title="Edytuj"
+                        onClick={() => openEdit(file)}
+                        title="Edytuj plik"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => openDeleteDialog(chunk)}
-                        title="Usuń"
+                        onClick={() => openDelete(file)}
+                        title="Usuń plik"
                       >
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </Button>
                     </div>
                   </div>
-                  <h3 className="font-medium mb-1">{chunk.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {chunk.content}
-                  </p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      {chunk.has_embedding ? (
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                      ) : (
-                        <AlertCircle className="w-3 h-3 text-yellow-500" />
-                      )}
-                      {chunk.has_embedding ? 'Embedding OK' : 'Brak embeddingu'}
-                    </span>
-                    <span>Zaktualizowano: {formatDate(chunk.updated_at)}</span>
-                  </div>
                 </div>
               ))}
 
-              {chunks.length === 0 && !loading && (
+              {files.length === 0 && !loading && (
                 <div className="text-center py-8 text-muted-foreground">
-                  Brak chunków do wyświetlenia
+                  Brak plików w katalogu data. Wgraj pierwszy plik Markdown.
                 </div>
               )}
             </div>
           </ScrollArea>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Poprzednia
-              </Button>
-              <span className="flex items-center px-4">
-                Strona {page} z {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Następna
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Edit/Create Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      {/* Upload Dialog */}
+      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {isCreating ? 'Nowy chunk wiedzy' : 'Edytuj chunk'}
-            </DialogTitle>
+            <DialogTitle>Wgraj plik wiedzy</DialogTitle>
             <DialogDescription>
-              {isCreating
-                ? 'Dodaj nowy fragment wiedzy do bazy RAG'
-                : 'Edytuj istniejący fragment wiedzy'}
+              Wgraj plik Markdown (.md) lub tekstowy (.txt) do katalogu data.
+              Później możesz go przetworzyć przyciskiem 🧠 obok pliku.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium">Kategoria</label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, category: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {CATEGORY_LABELS[cat] || cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Tytuł</label>
+              <label className="text-sm font-medium">Wybierz plik</label>
               <Input
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                placeholder="Tytuł chunka"
+                type="file"
+                accept=".md,.txt"
+                onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                className="mt-1"
               />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Treść</label>
-              <Textarea
-                value={formData.content}
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
-                placeholder="Treść wiedzy..."
-                rows={8}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Źródło (opcjonalne)</label>
-              <Input
-                value={formData.source}
-                onChange={(e) =>
-                  setFormData({ ...formData, source: e.target.value })
-                }
-                placeholder="np. baza_wiedzy_salonu.md"
-              />
+              {uploadFile && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Wybrany plik: {uploadFile.name}
+                </p>
+              )}
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsUploadOpen(false);
+                setUploadFile(null);
+              }}
+            >
               Anuluj
             </Button>
-            <Button onClick={isCreating ? handleCreate : handleUpdate}>
-              {isCreating ? 'Utwórz' : 'Zapisz zmiany'}
+            <Button onClick={handleUpload} disabled={!uploadFile || isUploading}>
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Wgrywanie...
+                </>
+              ) : (
+                'Wgraj plik'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Edytuj plik: {editingFile?.name}</DialogTitle>
+            <DialogDescription>
+              Po zapisaniu zmian pamiętaj, aby przetworzyć plik przyciskiem 🧠 lub
+              zsynchronizować wszystkie pliki.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <Textarea
+              value={fileContent}
+              onChange={(e) => setFileContent(e.target.value)}
+              className="min-h-[400px] font-mono text-sm"
+              placeholder="Treść pliku Markdown..."
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Anuluj
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Zapisywanie...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Zapisz zmiany
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Potwierdź usunięcie</DialogTitle>
             <DialogDescription>
-              Czy na pewno chcesz usunąć chunk "{selectedChunk?.title}"? Tej
-              operacji nie można cofnąć.
+              Czy na pewno chcesz usunąć plik "{deletingFile?.name}"? Usunięcie pliku
+              spowoduje również usunięcie powiązanych z nim chunków z bazy wiedzy.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>
               Anuluj
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
