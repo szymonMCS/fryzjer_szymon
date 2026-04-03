@@ -63,6 +63,8 @@ class BookingResponse(BaseModel):
     customer_phone: str
     service: ServiceInfo
     team_member: Optional[TeamMemberInfo]
+    team_member_id: Optional[UUID] = None
+    team_member_name: Optional[str] = None
     booking_date: date
     booking_time: str
     duration: int

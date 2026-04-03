@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
+import { format } from 'date-fns';
 import type { BookingFormData, TimeSlot, Service, TeamMember } from '@/types';
+import type { Booking, BookingUpdate } from '@/lib/api.types';
 import { api } from '@/lib/api';
+
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // Check if date is in the past
 const isPastDate = (date: Date): boolean => {
@@ -79,7 +83,7 @@ export const useBooking = () => {
     setFormData(prev => ({ ...prev, time: '' }));
 
     try {
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = format(date, 'yyyy-MM-dd');
       const teamMemberId = formData.teamMemberId || undefined;
 
       const response = await api.bookings.getAvailability(
@@ -183,7 +187,7 @@ export const useBooking = () => {
         team_member_id: formData.teamMemberId && formData.teamMemberId.trim() !== ''
           ? formData.teamMemberId
           : null,
-        booking_date: formData.date!.toISOString().split('T')[0],
+        booking_date: format(formData.date!, 'yyyy-MM-dd'),
         booking_time: formData.time,
         notes: formData.notes && formData.notes.trim() !== '' ? formData.notes : null,
       });
@@ -263,3 +267,114 @@ export const useBooking = () => {
     getConfirmedTotalDuration,
   };
 };
+
+
+// ==================== ADMIN BOOKINGS ====================
+
+interface UseBookingsState {
+  bookings: Booking[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+interface UseBookingsReturn extends UseBookingsState {
+  refetch: () => Promise<void>;
+  updateBooking: (id: string, data: BookingUpdate) => Promise<Booking | null>;
+  cancelBooking: (id: string, confirmationCode: string) => Promise<boolean>;
+}
+
+export const useBookings = (): UseBookingsReturn => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchBookings = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_URL}/bookings/admin/bookings`, {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Błąd HTTP: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setBookings(data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Nie udało się pobrać rezerwacji';
+      setError(errorMessage);
+      console.error('Error fetching bookings:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  const updateBooking = useCallback(async (id: string, data: BookingUpdate): Promise<Booking | null> => {
+    try {
+      const response = await fetch(`${API_URL}/bookings/admin/bookings/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Błąd HTTP: ${response.status}`);
+      }
+
+      const updatedBooking = await response.json();
+      setBookings(prev => prev.map(b => b.id === id ? updatedBooking : b));
+      return updatedBooking;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Nie udało się zaktualizować rezerwacji';
+      setError(errorMessage);
+      console.error('Error updating booking:', err);
+      return null;
+    }
+  }, []);
+
+  const cancelBooking = useCallback(async (id: string, confirmationCode: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_URL}/bookings/${id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ confirmation_code: confirmationCode }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Błąd HTTP: ${response.status}`);
+      }
+
+      setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
+      return true;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Nie udało się anulować rezerwacji';
+      setError(errorMessage);
+      console.error('Error cancelling booking:', err);
+      return false;
+    }
+  }, []);
+
+  return {
+    bookings,
+    isLoading,
+    error,
+    refetch: fetchBookings,
+    updateBooking,
+    cancelBooking,
+  };
+};
+
+export default useBookings;

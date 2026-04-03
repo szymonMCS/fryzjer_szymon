@@ -75,9 +75,7 @@ class BookingService(IBookingService):
         for member in team_members:
             member_exception = None
             if self._member_working_hours_repo:
-                member_exception = await self._member_working_hours_repo.get_by_member_and_date(
-                    member.id, booking_date
-                )
+                member_exception = await self._member_working_hours_repo.get_by_member_and_date(member.id, booking_date)
             if member_exception and not member_exception.is_working:
                 continue
             if member_exception and member_exception.start_time and member_exception.end_time:
@@ -127,23 +125,25 @@ class BookingService(IBookingService):
         
         if self._blacklist_repo:
             customer_email = data.get("customer_email")
-            is_blacklisted = await self._blacklist_repo.is_blacklisted(
-                phone_number=customer_phone, 
-                email=customer_email
-            )
+            is_blacklisted = await self._blacklist_repo.is_blacklisted(phone_number=customer_phone, email=customer_email)
             if is_blacklisted:
                 raise ConflictException("Ten numer telefonu lub email został zablokowany. Skontaktuj się z salonem.")
         
         service = await self._service_repo.get(service_id)
         if not service:
             raise NotFoundException(f"Service {service_id} not found")
+        
+        availability = await self.get_availability(booking_date, service_id, team_member_id)
+        available_members = availability.get(str(booking_time), [])
+        if not available_members:
+            raise ConflictException("Selected time slot is not available")
+        
         if not team_member_id:
-            availability = await self.get_availability(booking_date, service_id)
-            available_members = availability.get(str(booking_time), [])
-            if not available_members:
-                raise ConflictException("Selected time slot is not available")
             team_member_id = UUID(available_members[0])
             data["team_member_id"] = team_member_id
+        elif str(team_member_id) not in available_members:
+            raise ConflictException("Selected time slot is not available for this team member")
+        
         has_conflict = await self._booking_repo.check_time_conflict(team_member_id, booking_date, str(booking_time), service.duration)
         if has_conflict:
             raise ConflictException("Selected time slot is already booked")
@@ -220,5 +220,16 @@ class BookingService(IBookingService):
         booking = await self._booking_repo.get(booking_id)
         if not booking:
             return None
+        
+        if status == "completed":
+            booking_time = datetime.strptime(booking.booking_time, "%H:%M").time()
+            booking_datetime = datetime.combine(booking.booking_date, booking_time)
+            end_datetime = booking_datetime + timedelta(minutes=booking.duration)
+            if datetime.now() < end_datetime:
+                raise ConflictException("Nie można oznaczyć wizyty jako zrealizowanej przed jej zakończeniem")
+        
         await self._booking_repo.update(booking, {"status": status})
         return await self._booking_repo.get(booking_id)
+
+    async def delete_booking(self, booking_id: UUID) -> bool:
+        return await self._booking_repo.delete(booking_id)
