@@ -22,23 +22,26 @@ export interface RAGResponse {
   query_time_ms: number;
 }
 
-export interface KnowledgeChunk {
-  id: string;
-  category: string;
-  title: string;
-  content: string;
-  source: string | null;
-  created_at: string;
-  updated_at: string;
-  has_embedding: boolean;
+export interface RAGSearchRequest {
+  query: string;
+  k?: number;
+  category?: string;
 }
 
-export interface KnowledgeChunkList {
-  items: KnowledgeChunk[];
+export interface KnowledgeFile {
+  name: string;
+  size: number;
+  modified_at: string;
+}
+
+export interface KnowledgeFileList {
+  items: KnowledgeFile[];
   total: number;
-  page: number;
-  page_size: number;
-  pages: number;
+}
+
+export interface KnowledgeFileContent {
+  name: string;
+  content: string;
 }
 
 /**
@@ -90,209 +93,144 @@ export async function searchKnowledge(
   return response.json();
 }
 
+// --- Pliki wiedzy (admin) ---
+
 /**
- * Pobierz listę chunków wiedzy (admin)
+ * Pobierz listę plików wiedzy
  */
-export async function getKnowledgeChunks(
-  token: string,
-  page: number = 1,
-  pageSize: number = 20,
-  category?: string,
-  search?: string
-): Promise<KnowledgeChunkList> {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    page_size: pageSize.toString(),
-  });
-
-  if (category) params.append('category', category);
-  if (search) params.append('search', search);
-
-  const response = await fetch(`${API_URL}/admin/knowledge?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
+export async function getKnowledgeFiles(): Promise<KnowledgeFileList> {
+  const response = await fetch(`${API_URL}/admin/knowledge/files`, {
+    credentials: 'include',
   });
 
   if (!response.ok) {
-    throw new Error('Błąd podczas pobierania chunków');
+    throw new Error('Błąd podczas pobierania plików');
   }
 
   return response.json();
 }
 
 /**
- * Pobierz szczegóły chunka (admin)
+ * Pobierz zawartość pliku wiedzy
  */
-export async function getKnowledgeChunk(
-  token: string,
-  id: string
-): Promise<KnowledgeChunk> {
-  const response = await fetch(`${API_URL}/admin/knowledge/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
+export async function getKnowledgeFile(name: string): Promise<KnowledgeFileContent> {
+  const response = await fetch(`${API_URL}/admin/knowledge/files/${encodeURIComponent(name)}`, {
+    credentials: 'include',
   });
 
   if (!response.ok) {
-    throw new Error('Błąd podczas pobierania chunka');
+    throw new Error('Błąd podczas pobierania zawartości pliku');
   }
 
   return response.json();
 }
 
 /**
- * Utwórz nowy chunk (admin)
+ * Zapisz zawartość pliku wiedzy
  */
-export async function createKnowledgeChunk(
-  token: string,
-  data: {
-    category: string;
-    title: string;
-    content: string;
-    source?: string;
-  }
-): Promise<KnowledgeChunk> {
-  const response = await fetch(`${API_URL}/admin/knowledge`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
+export async function updateKnowledgeFile(name: string, content: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_URL}/admin/knowledge/files/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ content }),
   });
 
   if (!response.ok) {
-    throw new Error('Błąd podczas tworzenia chunka');
+    const error = await response.json();
+    throw new Error(error.detail || 'Błąd podczas zapisywania pliku');
   }
 
   return response.json();
 }
 
 /**
- * Zaktualizuj chunk (admin)
+ * Usuń plik wiedzy
  */
-export async function updateKnowledgeChunk(
-  token: string,
-  id: string,
-  data: {
-    category?: string;
-    title?: string;
-    content?: string;
-    source?: string;
-  },
-  regenerateEmbedding: boolean = false
-): Promise<KnowledgeChunk> {
-  const response = await fetch(
-    `${API_URL}/admin/knowledge/${id}?regenerate_embedding=${regenerateEmbedding}`,
-    {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('Błąd podczas aktualizacji chunka');
-  }
-
-  return response.json();
-}
-
-/**
- * Usuń chunk (admin)
- */
-export async function deleteKnowledgeChunk(
-  token: string,
-  id: string
-): Promise<void> {
-  const response = await fetch(`${API_URL}/admin/knowledge/${id}`, {
+export async function deleteKnowledgeFile(name: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_URL}/admin/knowledge/files/${encodeURIComponent(name)}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include',
   });
 
   if (!response.ok) {
-    throw new Error('Błąd podczas usuwania chunka');
-  }
-}
-
-/**
- * Regeneruj embedding dla chunka (admin)
- */
-export async function regenerateEmbedding(
-  token: string,
-  id: string
-): Promise<KnowledgeChunk> {
-  const response = await fetch(
-    `${API_URL}/admin/knowledge/${id}/regenerate-embedding`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('Błąd podczas regenerowania embeddingu');
+    const error = await response.json();
+    throw new Error(error.detail || 'Błąd podczas usuwania pliku');
   }
 
   return response.json();
 }
 
 /**
- * Pobierz listę kategorii (admin)
+ * Wgraj nowy plik wiedzy
  */
-export async function getCategories(token: string): Promise<{
-  categories: string[];
-}> {
-  const response = await fetch(`${API_URL}/admin/knowledge/categories/list`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    throw new Error('Błąd podczas pobierania kategorii');
-  }
-
-  return response.json();
-}
-
-/**
- * Pobierz status synchronizacji (admin)
- */
-export async function getSyncStatus(token: string): Promise<{
-  last_sync: string | null;
-  pending_changes: number;
-  total_chunks: number;
-  is_syncing: boolean;
-}> {
-  const response = await fetch(`${API_URL}/admin/knowledge/sync/status`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    throw new Error('Błąd podczas pobierania statusu synchronizacji');
-  }
-
-  return response.json();
-}
-
-/**
- * Przebuduj bazę wiedzy (admin)
- */
-export async function rebuildKnowledgeBase(token: string): Promise<{
+export async function uploadKnowledgeFile(
+  file: File
+): Promise<{
   success: boolean;
-  chunks_processed: number;
+  filename: string;
+  chunks_created: number;
   message: string;
 }> {
-  const response = await fetch(`${API_URL}/admin/knowledge/rebuild`, {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_URL}/admin/knowledge/upload`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ confirm: true }),
+    credentials: 'include',
+    body: formData,
   });
 
   if (!response.ok) {
-    throw new Error('Błąd podczas przebudowywania bazy wiedzy');
+    const error = await response.json();
+    throw new Error(error.detail || 'Błąd podczas wgrywania pliku');
+  }
+
+  return response.json();
+}
+
+/**
+ * Przetwórz plik wiedzy (ingest)
+ */
+export async function ingestKnowledgeFile(name: string): Promise<{
+  success: boolean;
+  filename: string;
+  chunks_created: number;
+  message: string;
+}> {
+  const response = await fetch(
+    `${API_URL}/admin/knowledge/files/${encodeURIComponent(name)}/ingest?rebuild=true`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Błąd podczas przetwarzania pliku');
+  }
+
+  return response.json();
+}
+
+/**
+ * Zsynchronizuj wszystkie pliki z bazą wiedzy
+ */
+export async function syncKnowledgeFiles(): Promise<{
+  success: boolean;
+  files_processed: number;
+  chunks_created: number;
+  message: string;
+}> {
+  const response = await fetch(`${API_URL}/admin/knowledge/sync`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Błąd podczas synchronizacji');
   }
 
   return response.json();
@@ -312,6 +250,26 @@ export async function getRAGHealth(): Promise<{
 
   if (!response.ok) {
     throw new Error('Błąd podczas sprawdzania statusu RAG');
+  }
+
+  return response.json();
+}
+
+/**
+ * Pobierz status synchronizacji (admin)
+ */
+export async function getSyncStatus(): Promise<{
+  last_sync: string | null;
+  pending_changes: number;
+  total_chunks: number;
+  is_syncing: boolean;
+}> {
+  const response = await fetch(`${API_URL}/admin/knowledge/sync/status`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error('Błąd podczas pobierania statusu synchronizacji');
   }
 
   return response.json();

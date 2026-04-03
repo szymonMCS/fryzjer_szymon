@@ -20,7 +20,7 @@
 
 ### 1.1 Informacje Ogólne
 
-**Nazwa:** Barber Bros  
+**Nazwa:** Fryzjer Szymon  
 **Typ:** Salon fryzjerski dla mężczyzn  
 **Specjalizacja:** Strzyżenia męskie, brody, pielęgnacja  
 **Styl:** Nowoczesny barbershop z klasycznymi tradycjami
@@ -299,24 +299,24 @@ Jako jedna z nielicznych kobiet w barberingu przynoszę inną perspektywę. Spec
 
 ### 6.1 Adres
 
-Barber Bros  
-ul. Fryzjerska 42  
-00-001 Warszawa  
+Fryzjer Szymon  
+ul. Białowieska 105  
+54-234 Wrocław  
 
 **Wskazówki dojazdu:**
-- 5 minut od stacji metra Centrum
-- Parking podziemny w budynku (płatny)
-- Wejście od ulicy Fryzjerskiej
+- Dostępne połączenia komunikacji miejskiej w pobliżu
+- Parking przy ulicy (strefa płatnego parkowania)
+- Wejście od ulicy Białowieskiej
 
 ### 6.2 Dane Kontaktowe
 
 **Telefon:** +48 123 456 789  
-**Email:** kontakt@barberbros.pl  
-**Strona:** www.barberbros.pl  
+**Email:** kontakt@fryzjerszymon.pl  
+**Strona:** www.fryzjerszymon.pl  
 
 **Social Media:**
-- Instagram: @barberbros_warszawa
-- Facebook: Barber Bros Warszawa
+- Instagram: @fryzjerszymon_wroclaw
+- Facebook: Fryzjer Szymon Wrocław
 
 ### 6.3 Parking
 
@@ -396,4 +396,4 @@ ul. Fryzjerska 42
 ### Q: Czy mogę kupić bon podarunkowy?
 **A:** Tak, bony dostępne w salonie lub online. Ważność 12 miesięcy.
 
----
+---32424234

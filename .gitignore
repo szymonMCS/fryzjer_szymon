@@ -97,6 +97,16 @@ coverage.xml
 *.temp
 .cache/
 
+# === Debug / Temporary ===
+fix_kb.py
+*_test.json
+*_error.json
+*_result.json
+ingest_*.json
+rag_test*.json
+similarity_test.json
+sync_result.json
+
 # === Backend Specific ===
 backend/__pycache__/
 backend/**/__pycache__/
