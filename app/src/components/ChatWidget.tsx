@@ -1,20 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
-import { useChat } from '@/hooks/useChat';
+import { useChatAPI } from '@/hooks/useChatAPI';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageCircle, X, Send, Bot, User, Sparkles, Wand2 } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Sparkles, Wand2, AlertCircle } from 'lucide-react';
 
 const quickQuestions = [
-  'Jaki kształt twarzy mam wybrać?',
-  'Co jest teraz modne?',
-  'Ile kosztuje strzyżenie?',
-  'Jak dbać o brodę?',
+  'Jakie są ceny usług?',
+  'Jakie są godziny otwarcia salonu?',
+  'Czy mogę przyjść bez rezerwacji?',
+  'Gdzie znajduje się salon?',
 ];
 
 export const ChatWidget = () => {
-  const { messages, isTyping, isOpen, sendMessage, toggleChat, messagesEndRef } = useChat();
+  const { messages, isTyping, isOpen, error, sendMessage, toggleChat, messagesEndRef } = useChatAPI();
   const [inputValue, setInputValue] = useState('');
   const [showTooltip, setShowTooltip] = useState(true);
+  const [showQuickQuestions, setShowQuickQuestions] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when chat opens
@@ -47,6 +48,7 @@ export const ChatWidget = () => {
   };
 
   const handleQuickQuestion = (question: string) => {
+    setShowQuickQuestions(false);
     sendMessage(question);
   };
 
@@ -89,7 +91,7 @@ export const ChatWidget = () => {
     <div className="fixed bottom-6 right-6 z-[1000]">
       {/* Chat Window */}
       <div 
-        className={`absolute bottom-24 right-0 w-[420px] max-w-[calc(100vw-48px)] bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 origin-bottom-right ${
+        className={`absolute bottom-0 right-0 w-[420px] max-w-[calc(100vw-48px)] max-h-[calc(100vh-120px)] bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 origin-bottom-right flex flex-col ${
           isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'
         }`}
         style={{ boxShadow: '0 25px 80px -12px rgba(0, 0, 0, 0.35)' }}
@@ -117,7 +119,7 @@ export const ChatWidget = () => {
         </div>
 
         {/* Messages */}
-        <div className="h-[400px] overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -170,11 +172,21 @@ export const ChatWidget = () => {
             </div>
           )}
 
+          {/* Error Indicator */}
+          {error && (
+            <div className="flex justify-center mb-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                <span className="text-xs text-red-600">Błąd połączenia z serwerem</span>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
         {/* Quick Questions */}
-        {messages.length <= 2 && (
+        {showQuickQuestions && messages.length <= 2 && (
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-3 flex items-center">
               <Sparkles className="w-3 h-3 mr-1 text-yellow-500" />
@@ -217,7 +229,7 @@ export const ChatWidget = () => {
       </div>
 
       {/* Chat Button with Label */}
-      <div className="relative flex items-center gap-3">
+      <div className={`relative flex items-center gap-3 ${isOpen ? 'hidden' : ''}`}>
         {/* Tooltip */}
         {showTooltip && !isOpen && (
           <div className="absolute bottom-full right-0 mb-3 bg-black text-white px-4 py-2 rounded-xl text-sm whitespace-nowrap animate-bounce z-50">

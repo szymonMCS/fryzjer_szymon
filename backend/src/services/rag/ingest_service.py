@@ -1,16 +1,17 @@
 from pathlib import Path
 from typing import List
 from pydantic import BaseModel, Field
-from tenacity import retry, wait_exponential
+from tenacity import retry, wait_exponential, stop_after_attempt
 from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text, delete
 from src.config import settings
 from database.models import KnowledgeChunk
+from database.repositories.knowledge_repository import KnowledgeRepository
 
-MODEL = settings.RAG_LLM_MODEL
-EMBEDDING_MODEL = settings.RAG_EMBEDDING_MODEL
-wait = wait_exponential(multiplier=1, min=10, max=240)
+MODEL = settings.OPENAI_LLM_MODEL
+EMBEDDING_MODEL = settings.OPENAI_EMBEDDING_MODEL
+wait = wait_exponential(multiplier=1, min=2, max=10)
+stop = stop_after_attempt(3)
 
 
 class Result(BaseModel):
@@ -34,7 +35,8 @@ class Chunks(BaseModel):
 class IngestService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.repo = KnowledgeRepository(db)
+        self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=120.0)
 
     def _make_prompt(self, document_text: str, source: str, average_chunk_size: int = 500):
         how_many = (len(document_text) // average_chunk_size) + 1
@@ -59,7 +61,7 @@ Dokument:
 
 Zwróć fragmenty w formacie JSON."""
 
-    @retry(wait=wait)
+    @retry(wait=wait, stop=stop, reraise=True)
     async def _process_document(self, document_text: str, source: str):
         messages = [{"role": "user", "content": self._make_prompt(document_text, source)}]
         response = await self.openai_client.chat.completions.create(model=MODEL, messages=messages, response_format={"type": "json_object"})
@@ -88,24 +90,16 @@ Zwróć fragmenty w formacie JSON."""
             raise FileNotFoundError(f"Plik nie istnieje: {file_path}")
 
         if rebuild:
-            await self.db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.source == file_path.name))
-            await self.db.commit()
+            await self.repo.delete_by_source(file_path.name)
 
         with open(file_path, "r", encoding="utf-8") as f:
             document_text = f.read()
 
+        print(f"[INGEST] Processing {file_path.name} ({len(document_text)} chars)...")
         chunks = await self._process_document(document_text, file_path.name)
+        print(f"[INGEST] Created {len(chunks)} chunks, generating embeddings...")
         embeddings = await self._create_embeddings(chunks)
+        print(f"[INGEST] Saving {len(chunks)} chunks to DB...")
         await self._save_to_db(chunks, embeddings)
-        
+        print(f"[INGEST] Done: {file_path.name} -> {len(chunks)} chunks")
         return len(chunks)
-
-    async def create_hnsw_index(self):
-        await self.db.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await self.db.execute(text("DROP INDEX IF EXISTS idx_knowledge_chunks_embedding_hnsw"))
-        await self.db.execute(text("""
-            CREATE INDEX idx_knowledge_chunks_embedding_hnsw 
-            ON knowledge_chunks USING hnsw (embedding vector_cosine_ops)
-            WITH (m = 16, ef_construction = 64)
-        """))
-        await self.db.commit()

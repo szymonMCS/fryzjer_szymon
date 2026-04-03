@@ -1,7 +1,7 @@
 # Baza Wiedzy Fryzjerskiej - Męskie Fryzury
 ## Dokumentacja dla Chatbota RAG
 
----
+-------
 
 ## SPIS TREŚCI
 

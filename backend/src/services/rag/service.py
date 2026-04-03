@@ -4,17 +4,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from tenacity import retry, wait_exponential, stop_after_attempt
 from openai import AsyncOpenAI
-from sqlalchemy import text
+from openai.types.chat import ChatCompletionMessageParam
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import KnowledgeChunk
+from database.repositories.knowledge_repository import KnowledgeRepository, SearchResultRow
 from src.config import settings
 
 OPENAI_API_KEY = settings.OPENAI_API_KEY
-LLM_MODEL = settings.RAG_LLM_MODEL
-EMBEDDING_MODEL = settings.RAG_EMBEDDING_MODEL
+LLM_MODEL = settings.OPENAI_LLM_MODEL
+EMBEDDING_MODEL = settings.OPENAI_EMBEDDING_MODEL
 RETRIEVAL_K = settings.RAG_RETRIEVAL_K
 FINAL_K = settings.RAG_FINAL_K
-SIMILARITY_THRESHOLD = 0.7
+SIMILARITY_THRESHOLD = 0.45
 
 wait = wait_exponential(multiplier=1, min=1, max=10)
 stop = stop_after_attempt(3)
@@ -38,67 +39,44 @@ class RAGService:
     def __init__(self, db_session: AsyncSession):
         self.db = db_session
         self.openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        self.repo = KnowledgeRepository(db_session)
 
     async def _generate_embedding(self, text: str) -> List[float]:
         if not self.openai_client:
             raise ValueError("Brak klucza API OpenAI")
         response = await self.openai_client.embeddings.create(
-            model=EMBEDDING_MODEL, 
+            model=EMBEDDING_MODEL,
             input=text[:30000]
         )
         return response.data[0].embedding
 
     async def search_similar_chunks(self, query: str, k: int = RETRIEVAL_K, category: Optional[str] = None) -> List[SearchResult]:
         query_embedding = await self._generate_embedding(query)
-        
-        sql = """
-            SELECT id, category, title, content, source, 1 - (embedding <=> :embedding) as similarity
-            FROM knowledge_chunks
-            WHERE embedding IS NOT NULL
-        """
-        params = {"embedding": str(query_embedding)}
-        
-        if category:
-            sql += " AND category = :category"
-            params["category"] = category
-        
-        sql += " ORDER BY embedding <=> :embedding LIMIT :limit"
-        params["limit"] = k
-        
-        result = await self.db.execute(text(sql), params)
-        rows = result.fetchall()
-        
-        search_results = []
-        for row in rows:
-            if row.similarity >= SIMILARITY_THRESHOLD:
-                chunk = KnowledgeChunk(
-                    id=row.id,
-                    category=row.category,
-                    title=row.title,
-                    content=row.content,
-                    source=row.source
-                )
-                search_results.append(SearchResult(chunk=chunk, similarity=row.similarity))
-        
-        return search_results
+        rows = await self.repo.search_similar_chunks(
+            query_embedding=query_embedding,
+            similarity_threshold=SIMILARITY_THRESHOLD,
+            k=k,
+            category=category,
+        )
+        return [SearchResult(chunk=r.chunk, similarity=r.similarity) for r in rows]
 
     @retry(wait=wait, stop=stop, reraise=True)
     async def rerank_chunks(self, query: str, chunks: List[SearchResult], k: int = FINAL_K) -> List[SearchResult]:
         if not chunks or not self.openai_client:
             return chunks[:k]
-        
+
         system_prompt = """Jesteś systemem do rerankingu dokumentów.
 Otrzymasz pytanie użytkownika i listę fragmentów tekstu z bazy wiedzy.
 Twoim zadaniem jest uporządkowanie fragmentów według trafności do pytania.
-Zwróć TYLKO listę numerów ID (indeksów) posortowanych od najbardziej do najmniej trafnych.
+Zwróć TYLKO obiekt JSON z polem 'order' zawierającym listę numerów ID (indeksów) posortowanych od najbardziej do najmniej trafnych.
 
-Format odpowiedzi: [3, 1, 5, 2, 4]"""
+Format odpowiedzi: {"order": [3, 1, 5, 2, 4]}"""
 
         user_prompt = f"Pytanie użytkownika: {query}\n\nFragmenty do oceny (każdy zaczyna się od # ID):\n\n"
         for i, result in enumerate(chunks, 1):
             user_prompt += f"# ID: {i}\nTytuł: {result.chunk.title}\nTreść: {result.chunk.content[:500]}...\n\n"
-        
-        user_prompt += "Uporządkuj ID fragmentów od najbardziej do najmniej trafnych. Odpowiedź jako lista liczb JSON."
+
+        user_prompt += "Uporządkuj ID fragmentów od najbardziej do najmniej trafnych. Odpowiedź jako obiekt JSON z polem 'order'."
 
         try:
             response = await self.openai_client.chat.completions.create(
@@ -111,26 +89,27 @@ Format odpowiedzi: [3, 1, 5, 2, 4]"""
                 temperature=0.1,
                 max_tokens=100
             )
-            content = response.choices[0].message.content
-            
+            content = response.choices[0].message.content or "{}"
+
             try:
-                order = json.loads(content).get("order", [])
+                parsed = json.loads(content)
+                order = parsed.get("order", []) if isinstance(parsed, dict) else []
                 if isinstance(order, list) and all(isinstance(x, int) for x in order):
                     reranked = [chunks[i-1] for i in order if 1 <= i <= len(chunks)]
                     return reranked[:k] if reranked else chunks[:k]
             except (json.JSONDecodeError, KeyError):
                 pass
-                
+
         except Exception as e:
             print(f"Błąd podczas rerankingu: {e}")
-        
+
         return chunks[:k]
 
     @retry(wait=wait, stop=stop, reraise=True)
-    async def rewrite_query(self, query: str, history: List[Dict] = None) -> str:
+    async def rewrite_query(self, query: str, history: Optional[List[Dict[str, str]]] = None) -> str:
         if not self.openai_client:
             return query
-        
+
         system_prompt = """Jesteś asystentem salonu fryzjerskiego.
 Twoim zadaniem jest przepisanie pytania użytkownika tak, aby było bardziej szczegółowe
 i precyzyjne pod kątem wyszukiwania w bazie wiedzy salonu.
@@ -142,7 +121,7 @@ Zwróć TYLKO przepisane pytanie, bez dodatkowych komentarzy."""
             for msg in history[-3:]:
                 role = "Użytkownik" if msg.get("role") == "user" else "Asystent"
                 history_text += f"{role}: {msg.get('content', '')}\n"
-        
+
         user_prompt = f"""{history_text}
 Aktualne pytanie użytkownika: {query}
 
@@ -158,26 +137,26 @@ Przepisz pytanie tak, aby było bardziej szczegółowe i pomogło znaleźć odpo
                 temperature=0.3,
                 max_tokens=200
             )
-            rewritten = response.choices[0].message.content.strip()
+            rewritten = (response.choices[0].message.content or query).strip()
             return rewritten if rewritten else query
-            
+
         except Exception as e:
             print(f"Błąd podczas przepisywania zapytania: {e}")
             return query
 
-    async def generate_answer(self, query: str, chunks: List[SearchResult], history: List[Dict] = None) -> str:
+    async def generate_answer(self, query: str, chunks: List[SearchResult], history: Optional[List[Dict[str, str]]] = None) -> str:
         if not self.openai_client:
             return "Przepraszam, system odpowiedzi jest tymczasowo niedostępny."
-        
+
         if not chunks:
             return "Przepraszam, nie znalazłem informacji na ten temat w naszej bazie wiedzy. Proszę skontaktować się z salonem bezpośrednio."
-        
+
         context_parts = []
         for i, result in enumerate(chunks, 1):
             context_parts.append(f"[DOKUMENT {i}]\nTytuł: {result.chunk.title}\nKategoria: {result.chunk.category}\nTreść: {result.chunk.content}\n")
-        
+
         context = "\n\n".join(context_parts)
-        
+
         system_prompt = f"""Jesteś przyjaznym i kompetentnym asystentem salonu fryzjerskiego dla mężczyzn.
 Odpowiadasz na pytania klientów wyłącznie na podstawie dostarczonego kontekstu.
 
@@ -192,17 +171,17 @@ ZASADY:
 KONTEKST Z BAZY WIEDZY:
 {context}"""
 
-        messages = [{"role": "system", "content": system_prompt}]
-        
+        messages: List[ChatCompletionMessageParam] = [{"role": "system", "content": system_prompt}]
+
         if history:
             for msg in history[-5:]:
                 messages.append({
                     "role": msg.get("role", "user"),
                     "content": msg.get("content", "")
                 })
-        
+
         messages.append({"role": "user", "content": query})
-        
+
         try:
             response = await self.openai_client.chat.completions.create(
                 model=LLM_MODEL,
@@ -210,36 +189,36 @@ KONTEKST Z BAZY WIEDZY:
                 temperature=0.7,
                 max_tokens=800
             )
-            return response.choices[0].message.content
-            
+            return response.choices[0].message.content or "Przepraszam, nie udało się wygenerować odpowiedzi."
+
         except Exception as e:
             print(f"Błąd podczas generowania odpowiedzi: {e}")
             return "Przepraszam, wystąpił błąd podczas generowania odpowiedzi. Proszę spróbować ponownie."
 
-    async def ask(self, query: str, history: List[Dict] = None) -> RAGResponse:
+    async def ask(self, query: str, history: Optional[List[Dict[str, str]]] = None) -> RAGResponse:
         start_time = datetime.now()
-        
+
         rewritten_query = await self.rewrite_query(query, history)
         chunks_original = await self.search_similar_chunks(query)
         chunks_rewritten = await self.search_similar_chunks(rewritten_query)
-        
+
         seen_ids = set()
         all_chunks = []
         for chunk in chunks_original + chunks_rewritten:
             if chunk.chunk.id not in seen_ids:
                 all_chunks.append(chunk)
                 seen_ids.add(chunk.chunk.id)
-        
+
         reranked_chunks = await self.rerank_chunks(query, all_chunks)
         answer = await self.generate_answer(query, reranked_chunks, history)
-        
+
         end_time = datetime.now()
         query_time_ms = int((end_time - start_time).total_seconds() * 1000)
-        
+
         confidence = 0.0
         if reranked_chunks:
             confidence = sum(r.similarity for r in reranked_chunks) / len(reranked_chunks)
-        
+
         sources = [
             {
                 "title": r.chunk.title,
@@ -249,7 +228,7 @@ KONTEKST Z BAZY WIEDZY:
             }
             for r in reranked_chunks[:5]
         ]
-        
+
         return RAGResponse(
             answer=answer,
             sources=sources,
