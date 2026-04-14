@@ -1,25 +1,15 @@
-/**
- * API client dla RAG (Retrieval Augmented Generation)
- */
-
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export interface RAGQueryRequest {
   query: string;
   history?: { role: string; content: string }[];
-  category?: string;
+  session_id?: string;
 }
 
 export interface RAGResponse {
   answer: string;
-  sources: {
-    title: string;
-    category: string;
-    similarity: number;
-    content_preview: string;
-  }[];
-  confidence: number;
-  query_time_ms: number;
+  session_id: string;
+  requires_confirmation?: boolean;
 }
 
 export interface RAGSearchRequest {
@@ -44,9 +34,6 @@ export interface KnowledgeFileContent {
   content: string;
 }
 
-/**
- * Zadaj pytanie systemowi RAG
- */
 export async function askQuestion(data: RAGQueryRequest): Promise<RAGResponse> {
   const response = await fetch(`${API_URL}/rag/ask`, {
     method: 'POST',
@@ -61,9 +48,6 @@ export async function askQuestion(data: RAGQueryRequest): Promise<RAGResponse> {
   return response.json();
 }
 
-/**
- * Wyszukaj wiedzę semantycznie
- */
 export async function searchKnowledge(
   query: string,
   k: number = 10,
@@ -93,11 +77,6 @@ export async function searchKnowledge(
   return response.json();
 }
 
-// --- Pliki wiedzy (admin) ---
-
-/**
- * Pobierz listę plików wiedzy
- */
 export async function getKnowledgeFiles(): Promise<KnowledgeFileList> {
   const response = await fetch(`${API_URL}/admin/knowledge/files`, {
     credentials: 'include',
@@ -110,9 +89,6 @@ export async function getKnowledgeFiles(): Promise<KnowledgeFileList> {
   return response.json();
 }
 
-/**
- * Pobierz zawartość pliku wiedzy
- */
 export async function getKnowledgeFile(name: string): Promise<KnowledgeFileContent> {
   const response = await fetch(`${API_URL}/admin/knowledge/files/${encodeURIComponent(name)}`, {
     credentials: 'include',
@@ -125,9 +101,6 @@ export async function getKnowledgeFile(name: string): Promise<KnowledgeFileConte
   return response.json();
 }
 
-/**
- * Zapisz zawartość pliku wiedzy
- */
 export async function updateKnowledgeFile(name: string, content: string): Promise<{ success: boolean; message: string }> {
   const response = await fetch(`${API_URL}/admin/knowledge/files/${encodeURIComponent(name)}`, {
     method: 'PUT',
@@ -144,9 +117,6 @@ export async function updateKnowledgeFile(name: string, content: string): Promis
   return response.json();
 }
 
-/**
- * Usuń plik wiedzy
- */
 export async function deleteKnowledgeFile(name: string): Promise<{ success: boolean; message: string }> {
   const response = await fetch(`${API_URL}/admin/knowledge/files/${encodeURIComponent(name)}`, {
     method: 'DELETE',
@@ -161,9 +131,6 @@ export async function deleteKnowledgeFile(name: string): Promise<{ success: bool
   return response.json();
 }
 
-/**
- * Wgraj nowy plik wiedzy
- */
 export async function uploadKnowledgeFile(
   file: File
 ): Promise<{
@@ -189,9 +156,6 @@ export async function uploadKnowledgeFile(
   return response.json();
 }
 
-/**
- * Przetwórz plik wiedzy (ingest)
- */
 export async function ingestKnowledgeFile(name: string): Promise<{
   success: boolean;
   filename: string;
@@ -214,9 +178,6 @@ export async function ingestKnowledgeFile(name: string): Promise<{
   return response.json();
 }
 
-/**
- * Zsynchronizuj wszystkie pliki z bazą wiedzy
- */
 export async function syncKnowledgeFiles(): Promise<{
   success: boolean;
   files_processed: number;
@@ -236,9 +197,6 @@ export async function syncKnowledgeFiles(): Promise<{
   return response.json();
 }
 
-/**
- * Sprawdź status RAG
- */
 export async function getRAGHealth(): Promise<{
   status: string;
   total_chunks: number;
@@ -255,9 +213,6 @@ export async function getRAGHealth(): Promise<{
   return response.json();
 }
 
-/**
- * Pobierz status synchronizacji (admin)
- */
 export async function getSyncStatus(): Promise<{
   last_sync: string | null;
   pending_changes: number;

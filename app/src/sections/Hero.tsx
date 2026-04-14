@@ -112,7 +112,7 @@ export const Hero = () => {
 
             {/* Subheading */}
             <p className="hero-subheading text-xl md:text-2xl text-white/90 font-light mb-8 max-w-lg">
-              Męskie strzyżenie włosów i brody w Nysie. Profesjonalizm, styl i
+              Męskie strzyżenie włosów i brody we Wrocławiu. Profesjonalizm, styl i
               precyzja w każdym cięciu.
             </p>
 

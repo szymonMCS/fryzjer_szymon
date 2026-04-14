@@ -2,10 +2,9 @@ from uuid import UUID
 from typing import Optional, List
 from database.models import Service
 from database.repositories.service_repository import ServiceRepository
-from src.services.interfaces.service import IServiceService
 
 
-class ServiceService(IServiceService):
+class ServiceService:
     def __init__(self, repository: ServiceRepository):
         self._repo = repository
     

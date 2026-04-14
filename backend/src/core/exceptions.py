@@ -3,13 +3,6 @@ class DomainException(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(self.message)
-    
-    def to_dict(self) -> dict:
-        return {
-            "error": self.__class__.__name__,
-            "message": self.message,
-            "status_code": self.status_code
-        }
 
 
 class NotFoundException(DomainException):
@@ -32,6 +25,3 @@ class AuthenticationException(DomainException):
         super().__init__(message, status_code=401)
 
 
-class AuthorizationException(DomainException): 
-    def __init__(self, message: str = "Not authorized"):
-        super().__init__(message, status_code=403)

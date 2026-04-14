@@ -3,13 +3,13 @@ import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import FileResponse
 from src.api.deps import get_current_admin
+from src.config import PROJECT_ROOT
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
-UPLOAD_DIR = r"C:\Users\szymo\Desktop\projekty llm\fryzjer_szymon\backend\database\member_photos"
+UPLOAD_DIR = str(PROJECT_ROOT / "backend" / "database" / "member_photos")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 
 @router.post("/team-member-photo")
 async def upload_team_member_photo(file: UploadFile = File(...), admin: bool = Depends(get_current_admin)):

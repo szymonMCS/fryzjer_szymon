@@ -10,4 +10,8 @@ mcp
 httpx
 tenacity
 openai
+openai-agents
 tqdm
+tiktoken
+langchain-text-splitters
+aiofiles

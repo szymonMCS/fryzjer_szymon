@@ -5,11 +5,15 @@ from database.config import get_async_session
 from database.repositories.working_hours_repository import WorkingHoursRepository
 from database.repositories.service_repository import ServiceRepository
 from database.repositories.team_repository import TeamRepository
-from src.services.factories import ServiceFactory
-from src.services.interfaces.admin import IAdminAuthService
-from src.services.interfaces.service import IServiceService
-from src.services.interfaces.team import ITeamService
-from src.services.interfaces.booking import IBookingService
+from database.repositories.booking_repository import BookingRepository
+from database.repositories.blacklist_repository import BlacklistRepository
+from database.repositories.member_working_hours_repository import MemberWorkingHoursRepository
+from src.services.admin import AdminAuthService
+from src.services.service import ServiceService
+from src.services.team import TeamService
+from src.services.booking.service import BookingService
+from src.services.rag.knowledge_service import KnowledgeRAGService
+from src.services.rag.booking_agent import BookingAgentService
 from src.core.exceptions import AuthenticationException
 
 
@@ -18,23 +22,30 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-get_db_session = get_db
+def get_admin_auth_service() -> AdminAuthService:
+    return AdminAuthService()
 
+def get_service_service(db: AsyncSession = Depends(get_db)) -> ServiceService:
+    return ServiceService(ServiceRepository(db))
 
-def get_service_factory(db: AsyncSession = Depends(get_db)) -> ServiceFactory:
-    return ServiceFactory(db)
+def get_team_service(db: AsyncSession = Depends(get_db)) -> TeamService:
+    return TeamService(TeamRepository(db))
 
-def get_admin_auth_service(factory: ServiceFactory = Depends(get_service_factory)) -> IAdminAuthService:
-    return factory.create_admin_auth_service()
+def get_booking_service(db: AsyncSession = Depends(get_db)) -> BookingService:
+    return BookingService(
+        booking_repo=BookingRepository(db),
+        working_hours_repo=WorkingHoursRepository(db),
+        service_repo=ServiceRepository(db),
+        team_repo=TeamRepository(db),
+        blacklist_repo=BlacklistRepository(db),
+        member_working_hours_repo=MemberWorkingHoursRepository(db),
+    )
 
-def get_service_service(factory: ServiceFactory = Depends(get_service_factory)) -> IServiceService:
-    return factory.create_service_service()
+def get_knowledge_service(db: AsyncSession = Depends(get_db)) -> KnowledgeRAGService:
+    return KnowledgeRAGService(db)
 
-def get_team_service(factory: ServiceFactory = Depends(get_service_factory)) -> ITeamService:
-    return factory.create_team_service()
-
-def get_booking_service(factory: ServiceFactory = Depends(get_service_factory)) -> IBookingService:
-    return factory.create_booking_service()
+def get_booking_agent_service(db: AsyncSession = Depends(get_db)) -> BookingAgentService:
+    return BookingAgentService(db)
 
 def get_working_hours_repo(db: AsyncSession = Depends(get_db)) -> WorkingHoursRepository:
     return WorkingHoursRepository(db)
@@ -45,8 +56,8 @@ def get_service_repo(db: AsyncSession = Depends(get_db)) -> ServiceRepository:
 def get_team_repo(db: AsyncSession = Depends(get_db)) -> TeamRepository:
     return TeamRepository(db)
 
-async def get_current_admin(request: Request, auth_service: IAdminAuthService = Depends(get_admin_auth_service)) -> bool:
+async def get_current_admin(request: Request, auth_service: AdminAuthService = Depends(get_admin_auth_service)) -> bool:
     is_valid = await auth_service.verify_session(request)
     if not is_valid:
-        raise AuthenticationException("Invalid or expired session")
+        raise AuthenticationException("Sesja wygasla lub jest nieprawidlowa")
     return True

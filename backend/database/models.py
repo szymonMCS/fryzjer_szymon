@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 from typing import Optional, List, Any
 from sqlalchemy import (
     String,
@@ -119,3 +119,15 @@ class BlacklistedPhone(Base):
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+
+class ConversationSession(Base):
+    __tablename__ = "conversation_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    messages: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    booking_state: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

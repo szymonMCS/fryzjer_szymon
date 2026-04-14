@@ -2,8 +2,8 @@ from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.config import get_async_session
 from database.repositories.blacklist_repository import BlacklistRepository
+from src.api.deps import get_db
 from src.schemas.blacklist import BlacklistedPhoneCreate, BlacklistedPhoneResponse, BlacklistCheckResponse
 from src.api.deps import get_current_admin
 
@@ -14,17 +14,16 @@ router = APIRouter(prefix="/blacklist", tags=["admin-blacklist"])
 async def list_blacklisted(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_db),
     admin: bool = Depends(get_current_admin)
 ):
     repo = BlacklistRepository(db)
     return await repo.get_all_blacklisted(skip=skip, limit=limit)
 
-
 @router.post("/phones", response_model=BlacklistedPhoneResponse, status_code=status.HTTP_201_CREATED)
 async def add_to_blacklist(
     data: BlacklistedPhoneCreate,
-    db: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_db),
     admin: bool = Depends(get_current_admin)
 ):
     repo = BlacklistRepository(db)
@@ -56,33 +55,23 @@ async def add_to_blacklist(
     blacklist_entry = await repo.create(entry_data)
     return blacklist_entry
 
-
 @router.delete("/phones/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_from_blacklist(entry_id: UUID, db: AsyncSession = Depends(get_async_session), admin: bool = Depends(get_current_admin)):
+async def remove_from_blacklist(entry_id: UUID, db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     repo = BlacklistRepository(db)
     
     success = await repo.delete(entry_id)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nie znaleziono wpisu na czarnej liście"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono wpisu na czarnej liście")
 
 @router.get("/phones/check/{phone_number}", response_model=BlacklistCheckResponse)
-async def check_phone_blacklist(phone_number: str, db: AsyncSession = Depends(get_async_session), admin: bool = Depends(get_current_admin)):
+async def check_phone_blacklist(phone_number: str, db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     repo = BlacklistRepository(db)
     entry = await repo.get_by_phone_number(phone_number)
-    return BlacklistCheckResponse(
-        is_blacklisted=entry is not None,
-        reason=entry.reason if entry else None
-    )
+    return BlacklistCheckResponse(is_blacklisted=entry is not None, reason=entry.reason if entry else None)
 
 @router.get("/check-email/{email}", response_model=BlacklistCheckResponse)
-async def check_email_blacklist(email: str, db: AsyncSession = Depends(get_async_session), admin: bool = Depends(get_current_admin)):
+async def check_email_blacklist(email: str, db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     repo = BlacklistRepository(db)
     entry = await repo.get_by_email(email)
     
-    return BlacklistCheckResponse(
-        is_blacklisted=entry is not None,
-        reason=entry.reason if entry else None
-    )
+    return BlacklistCheckResponse(is_blacklisted=entry is not None, reason=entry.reason if entry else None)
