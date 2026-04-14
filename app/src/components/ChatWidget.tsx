@@ -7,7 +7,7 @@ import { MessageCircle, X, Send, Bot, User, Sparkles, Wand2, AlertCircle } from 
 const quickQuestions = [
   'Jakie są ceny usług?',
   'Jakie są godziny otwarcia salonu?',
-  'Czy mogę przyjść bez rezerwacji?',
+  'Chcę umówić wizytę',
   'Gdzie znajduje się salon?',
 ];
 

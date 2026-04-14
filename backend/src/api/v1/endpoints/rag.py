@@ -1,36 +1,49 @@
-from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text, func, select
-from database.config import get_async_session
 from database.models import KnowledgeChunk
 from src.schemas.rag import (
-    RAGQueryRequest, 
-    RAGResponse, 
-    RAGSearchRequest, 
+    RAGQueryRequest,
+    RAGResponse,
+    RAGSearchRequest,
     RAGSearchResponse,
     SearchResultItem,
-    RAGHealthResponse
+    RAGHealthResponse,
 )
-from src.services.rag.service import RAGService
+from src.api.deps import get_knowledge_service, get_booking_agent_service, get_db
+from src.services.rag.knowledge_service import KnowledgeRAGService
+from src.services.rag.booking_agent import BookingAgentService
 from src.config import settings
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
+FORBIDDEN_PHRASES = ["system:", "ignore previous", "you are now", "as an ai", "ignore all"]
+
+def _sanitize_query(query: str) -> str:
+    lower_query = query.lower()
+    for phrase in FORBIDDEN_PHRASES:
+        if phrase in lower_query:
+            raise ValueError("Nieprawidłowe zapytanie")
+    return query[:2000]
 
 @router.post("/ask", response_model=RAGResponse)
-async def ask_question(request: RAGQueryRequest, db: AsyncSession = Depends(get_async_session)):
+async def ask_question(query_req: RAGQueryRequest, booking_agent: BookingAgentService = Depends(get_booking_agent_service)):
     try:
-        rag_service = RAGService(db)
-        response = await rag_service.ask(query=request.query, history=request.history or [])
-        return response
+        query = _sanitize_query(query_req.query)
+        if query_req.confirmation:
+            query = f"{query} (potwierdzenie: {query_req.confirmation})"
+
+        response = await booking_agent.ask(query=query, history=query_req.history or [], session_id=query_req.session_id)
+
+        return RAGResponse(
+            answer=response.answer,
+            session_id=response.session_id,
+            requires_confirmation=response.requires_confirmation
+        )
     except ValueError as e:
-        if "Brak klucza API OpenAI" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="System RAG jest tymczasowo niedostępny - brak konfiguracji API OpenAI"
-            )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -38,51 +51,57 @@ async def ask_question(request: RAGQueryRequest, db: AsyncSession = Depends(get_
         )
 
 @router.post("/search", response_model=RAGSearchResponse)
-async def search_knowledge(request: RAGSearchRequest, db: AsyncSession = Depends(get_async_session)):
+async def search_knowledge(request: RAGSearchRequest, knowledge_service: KnowledgeRAGService = Depends(get_knowledge_service)):
     try:
-        rag_service = RAGService(db)
-        chunks = await rag_service.search_similar_chunks(query=request.query, k=request.k, category=request.category)
-        
-        results = [
-            SearchResultItem(
-                id=result.chunk.id,
-                title=result.chunk.title,
-                category=result.chunk.category,
-                content=result.chunk.content,
-                similarity=result.similarity,
-                source=result.chunk.source
-            )
-            for result in chunks
-        ]
-        
-        return RAGSearchResponse(results=results, total=len(results), query=request.query)
-    except ValueError as e:
-        if "Brak klucza API OpenAI" in str(e):
+        if not settings.OPENAI_API_KEY:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="System RAG jest tymczasowo niedostępny - brak konfiguracji API OpenAI"
+                detail="Brak konfiguracji API OpenAI"
             )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+        results = await knowledge_service.search_similar(request.query, k=request.k, category=request.category)
+
+        return RAGSearchResponse(
+            results=[
+                SearchResultItem(
+                    id=r.chunk.id,
+                    title=r.chunk.title,
+                    category=r.chunk.category,
+                    content=r.chunk.content,
+                    similarity=r.similarity,
+                    source=r.chunk.source
+                )
+                for r in results
+            ],
+            total=len(results),
+            query=request.query
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Błąd podczas wyszukiwania: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Błąd podczas wyszukiwania: {str(e)}"
+        )
 
 @router.get("/health", response_model=RAGHealthResponse)
-async def rag_health_check(db: AsyncSession = Depends(get_async_session)):
+async def rag_health_check(db: AsyncSession = Depends(get_db)):
     try:
         total_result = await db.execute(select(func.count()).select_from(KnowledgeChunk))
         total_chunks = total_result.scalar() or 0
+
         with_embeddings_result = await db.execute(select(func.count()).select_from(KnowledgeChunk).where(KnowledgeChunk.embedding.is_not(None)))
         chunks_with_embeddings = with_embeddings_result.scalar() or 0
+
         categories_result = await db.execute(select(KnowledgeChunk.category).distinct())
         categories = [row[0] for row in categories_result.fetchall()]
-        openai_configured = bool(settings.OPENAI_API_KEY)
-        
+
         return RAGHealthResponse(
-            status="healthy" if openai_configured else "degraded",
+            status="healthy" if settings.OPENAI_API_KEY else "degraded",
             total_chunks=total_chunks,
             chunks_with_embeddings=chunks_with_embeddings,
             categories=categories,
-            openai_api_configured=openai_configured
+            openai_api_configured=bool(settings.OPENAI_API_KEY)
         )
     except Exception as e:
         raise HTTPException(

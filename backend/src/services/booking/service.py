@@ -1,10 +1,9 @@
 import random
 import string
 import time
-from datetime import date, datetime, timedelta, time as dt_time
-from typing import Optional, List, Dict
+from datetime import date, datetime, timedelta, time as dt_time, timezone
+from typing import Optional, List, Dict, Any
 from uuid import UUID
-from src.services.interfaces.booking import IBookingService
 from database.models import Booking
 from database.repositories.booking_repository import BookingRepository
 from database.repositories.working_hours_repository import WorkingHoursRepository
@@ -12,10 +11,12 @@ from database.repositories.service_repository import ServiceRepository
 from database.repositories.team_repository import TeamRepository
 from database.repositories.blacklist_repository import BlacklistRepository
 from database.repositories.member_working_hours_repository import MemberWorkingHoursRepository
-from src.core.exceptions import NotFoundException, ConflictException
+from src.core.exceptions import NotFoundException, ConflictException, ValidationException
+
+VALID_STATUSES = {"pending", "confirmed", "completed", "cancelled"}
 
 
-class BookingService(IBookingService):
+class BookingService:
     def __init__(
         self,
         booking_repo: BookingRepository,
@@ -57,13 +58,13 @@ class BookingService(IBookingService):
     async def get_availability(self, booking_date: date, service_id: UUID, team_member_id: Optional[UUID] = None) -> Dict[str, List[str]]:
         service = await self._service_repo.get(service_id)
         if not service:
-            raise NotFoundException(f"Service {service_id} not found")
+            raise NotFoundException(f"Nie znaleziono uslugi {service_id}")
 
         team_members: List = []
         if team_member_id:
             member = await self._team_repo.get(team_member_id)
             if not member:
-                raise NotFoundException(f"Team member {team_member_id} not found")
+                raise NotFoundException(f"Nie znaleziono pracownika {team_member_id}")
             team_members = [member]
         else:
             team_members = await self._team_repo.get_active()
@@ -71,6 +72,14 @@ class BookingService(IBookingService):
         day_of_week = self._get_day_of_week(booking_date)
         service_duration = service.duration
         availability: Dict[str, List[str]] = {}
+
+        all_bookings = await self._booking_repo.get_by_date_range(booking_date, booking_date)
+        bookings_by_member: Dict[str, List] = {}
+        for booking in all_bookings:
+            member_id = str(booking.team_member_id)
+            if member_id not in bookings_by_member:
+                bookings_by_member[member_id] = []
+            bookings_by_member[member_id].append(booking)
 
         for member in team_members:
             member_exception = None
@@ -90,7 +99,7 @@ class BookingService(IBookingService):
                 start_time = working_hours.start_time.strftime("%H:%M")
                 end_time = working_hours.end_time.strftime("%H:%M")
 
-            existing_bookings = await self._booking_repo.get_by_team_member(member.id, booking_date)
+            existing_bookings = bookings_by_member.get(str(member.id), [])
             start_minutes = self._time_to_minutes(start_time)
             end_minutes = self._time_to_minutes(end_time)
             slot_duration = 30
@@ -113,6 +122,17 @@ class BookingService(IBookingService):
                 current_slot += slot_duration
         return availability
 
+    async def get_available_barbers(self) -> List[Dict[str, Any]]:
+        members = await self._team_repo.get_active()
+        return [
+            {
+                "id": str(m.id),
+                "name": m.name,
+                "specialties": m.specialties if hasattr(m, 'specialties') else [],
+            }
+            for m in members
+        ]
+
     async def create_booking(self, data: dict) -> Booking:
         service_id = data.get("service_id")
         team_member_id = data.get("team_member_id")
@@ -121,7 +141,7 @@ class BookingService(IBookingService):
         customer_phone = data.get("customer_phone")
 
         if not service_id or not booking_date or not booking_time:
-            raise ValueError("service_id, booking_date, and booking_time are required")
+            raise ValidationException("Wymagane pola: service_id, booking_date, booking_time")
         
         if self._blacklist_repo:
             customer_email = data.get("customer_email")
@@ -131,22 +151,22 @@ class BookingService(IBookingService):
         
         service = await self._service_repo.get(service_id)
         if not service:
-            raise NotFoundException(f"Service {service_id} not found")
-        
+            raise NotFoundException(f"Nie znaleziono uslugi {service_id}")
+
         availability = await self.get_availability(booking_date, service_id, team_member_id)
         available_members = availability.get(str(booking_time), [])
         if not available_members:
-            raise ConflictException("Selected time slot is not available")
-        
+            raise ConflictException("Wybrany termin nie jest dostepny")
+
         if not team_member_id:
             team_member_id = UUID(available_members[0])
             data["team_member_id"] = team_member_id
         elif str(team_member_id) not in available_members:
-            raise ConflictException("Selected time slot is not available for this team member")
-        
+            raise ConflictException("Wybrany termin nie jest dostepny dla tego pracownika")
+
         has_conflict = await self._booking_repo.check_time_conflict(team_member_id, booking_date, str(booking_time), service.duration)
         if has_conflict:
-            raise ConflictException("Selected time slot is already booked")
+            raise ConflictException("Wybrany termin jest juz zarezerwowany")
 
         confirmation_code = await self._generate_confirmation_code()
 
@@ -162,7 +182,7 @@ class BookingService(IBookingService):
             "status": "confirmed",
             "confirmation_code": confirmation_code,
             "notes": data.get("notes"),
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
         return await self._booking_repo.create(booking_data)
 
@@ -172,24 +192,15 @@ class BookingService(IBookingService):
     async def cancel_booking(self, booking_id: UUID, phone: str, code: str) -> bool:
         booking = await self._booking_repo.get(booking_id)
         if not booking:
-            raise NotFoundException(f"Booking {booking_id} not found")
-        if booking.customer_phone != phone:
-            return False
-        if booking.confirmation_code != code:
-            return False
+            raise NotFoundException(f"Nie znaleziono rezerwacji {booking_id}")
         if booking.status == "cancelled":
-            return False
+            raise ConflictException("Rezerwacja jest już anulowana")
+        if booking.customer_phone != phone:
+            raise ValidationException("Nieprawidłowy numer telefonu")
+        if booking.confirmation_code != code:
+            raise ValidationException("Nieprawidłowy kod potwierdzenia")
         await self._booking_repo.update(booking, {"status": "cancelled"})
         return True
-
-    async def get_upcoming_bookings(self, limit: int = 50) -> List[Booking]:
-        today = date.today()
-        try:
-            end_date = today.replace(year=today.year + 1)
-        except ValueError:
-            end_date = today.replace(year=today.year + 1, day=28)
-        bookings = await self._booking_repo.get_by_date_range(today, end_date)
-        return bookings[:limit]
 
     async def get_filtered_bookings(
         self,
@@ -217,6 +228,9 @@ class BookingService(IBookingService):
         return bookings[:limit]
 
     async def update_booking_status(self, booking_id: UUID, status: str) -> Optional[Booking]:
+        if status not in VALID_STATUSES:
+            raise ValidationException(f"Nieprawidłowy status. Dozwolone: {', '.join(VALID_STATUSES)}")
+        
         booking = await self._booking_repo.get(booking_id)
         if not booking:
             return None

@@ -22,12 +22,12 @@
 
 **Nazwa:** Fryzjer Szymon  
 **Typ:** Salon fryzjerski dla mężczyzn  
-**Specjalizacja:** Strzyżenia męskie, brody, pielęgnacja  
+**Specjalizacja:** Strzyżenia męskie, brody, pielęgnacja, koloryzacja  
 **Styl:** Nowoczesny barbershop z klasycznymi tradycjami
 
 ### 1.2 Historia i Filozofia
 
-Salon został założony z pasji do męskiego stylu i dbania o szczegóły. Wierzymy, że każdy mężczyzna zasługuje na profesjonalną opiekę i czas tylko dla siebie.
+Salon został założony przez Szymona z pasji do męskiego stylu i dbania o szczegóły. Wierzymy, że każdy mężczyzna zasługuje na profesjonalną opiekę i czas tylko dla siebie.
 
 **Nasze wartości:**
 - Precyzja w każdym cięciu
@@ -35,7 +35,7 @@ Salon został założony z pasji do męskiego stylu i dbania o szczegóły. Wier
 - Ciągły rozwój i nauka nowych technik
 - Atmosfera przyjacielska i zrelaksowana
 
-### 1.3 Wyposażenie Salony
+### 1.3 Wyposażenie Salonu
 
 - Fotele barberskie premium
 - Profesjonalne stanowiska do mycia włosów
@@ -47,113 +47,57 @@ Salon został założony z pasji do męskiego stylu i dbania o szczegóły. Wier
 
 ## 2. ZESPÓŁ
 
-### 2.1 Bartek - Właściciel & Główny Barber
+### 2.1 Szymon - Właściciel & Mistrz Fryzjerstwa
 
-**Stanowisko:** Właściciel, Master Barber  
-**Doświadczenie:** 8 lat w zawodzie  
+**Stanowisko:** Właściciel, Mistrz Fryzjerstwa  
+**Doświadczenie:** 15 lat w zawodzie  
 **Specjalizacje:** 
-- Precyzyjne fade'y (wszystkie typy)
-- Klasyczne strzyżenia męskie
-- Pielęgnacja brodów
-- Stylowe układanie włosów
+- Strzyżenie klasyczne
+- Koloryzacja włosów
+- Stylizacja i pielęgnacja
 
 **O sobie:**  
-Fryzjerstwem zajmuję się od 8 lat. Ukończyłem prestiżowe kursy barberskie w Londynie i Warszawie. Specjalizuję się w precyzyjnych fade'ach i klasycznych cięciach. Każdy klient to dla mnie nowe wyzwanie - lubię doradzać i dobierać fryzurę do kształtu twarzy i stylu życia.
+Założyciel salonu z 15-letnim doświadczeniem w branży fryzjerskiej. Specjalista zarówno w klasycznych strzyżeniach męskich, jak i nowoczesnych trendach. Z pasją podchodzi do każdego klienta, doradzając fryzurę dopasowaną do kształtu twarzy i stylu życia.
 
-**Certyfikaty:**
-- Męskie Strzyżenia i Brody - Akademia Fryzjerstwa Warszawa
-- Advanced Barbering - London School of Barbering
-- Koloryzacja Męska - Schwarzkopf Professional
+### 2.2 Ola - Stylistka
 
-### 2.2 Michał - Barber
-
-**Stanowisko:** Barber  
-**Doświadczenie:** 4 lata w zawodzie  
+**Stanowisko:** Stylistka  
+**Doświadczenie:** 8 lat w zawodzie  
 **Specjalizacje:**
-- Szybkie i precyzyjne strzyżenia
-- Stylizacja włosów
-- Obsługa włosów kręconych
-- Koloryzacja męska
+- Koloryzacja włosów
+- Balayage
+- Strzyżenie męskie
+- Stylizacja nowoczesna
 
 **O sobie:**  
-Zawsze interesowałem się modą męską i stylem. Po kursach fryzjerskich znalazłem swoją pasję w barberingu. Jestem perfekcjonistą - każde cięcie musi być symetryczne i dopracowane. Szczególnie lubię pracę z włosami kręconymi i koloryzację.
-
-**Certyfikaty:**
-- Barbering Fundamentals - Polish Barber Academy
-- Koloryzacja i Baleyage - L'Oréal Professionnel
-
-### 2.3 Kasia - Barberka
-
-**Stanowisko:** Barberka, Specjalistka od Długich Włosów  
-**Doświadczenie:** 5 lat w zawodzie  
-**Specjalizacje:**
-- Strzyżenia długich włosów męskich
-- Man bun i upięcia
-- Pielęgnacja włosów
-- Stylizacja fal i loków
-
-**O sobie:**  
-Jako jedna z nielicznych kobiet w barberingu przynoszę inną perspektywę. Specjalizuję się w długich włosach męskich - man bunach, falach, loczkach. Uwielbiam edukować klientów o pielęgnacji i pomagać im odkryć nowe style.
-
-**Certyfikaty:**
-- Męskie Strzyżenia - Toni&Guy Academy
-- Pielęgnacja Włosów Kręconych - DevaCurl
-- Long Hair Specialist - Vidal Sassoon
+Kreatywna stylistka z pasją do nowoczesnych fryzur. Specjalizuje się w koloryzacji i stylizacji, zawsze na bieżąco z najnowszymi trendami. Jej atutem jest umiejętność słuchania klienta i przekuwania wizji w rzeczywistość.
 
 ---
 
 ## 3. USŁUGI I CENNIK
 
-### 3.1 Strzyżenia
+### 3.1 Strzyżenia i Modelowanie
 
-| Usługa | Cena | Czas |
-|--------|------|------|
-| Strzyżenie męskie (maszynka + nożyczki) | 60 zł | 45 min |
-| Strzyżenie maszynką (fade/buzz cut) | 50 zł | 30 min |
-| Strzyżenie brody | 40 zł | 30 min |
-| Strzyżenie + broda (pakiet) | 90 zł | 60 min |
-| Strzyżenie długich włosów | 70 zł | 50 min |
-| Strzyżenie dziecięce (do 12 lat) | 45 zł | 30 min |
+| Usługa | Cena | Czas | Opis |
+|--------|------|------|------|
+| Strzyżenie męskie | 70 zł | 30 min | Klasyczne strzyżenie włosów z użyciem maszynki i nożyczek |
+| Strzyżenie brody | 50 zł | 20 min | Precyzyjne modelowanie brody z użyciem maszynki i nożyczek |
+| Combo - Włosy + Broda | 110 zł | 50 min | Kompleksowa usługa obejmująca strzyżenie włosów i brody |
+| Koloryzacja włosów | 150 zł | 90 min | Profesjonalna koloryzacja włosów z użyciem premium produktów |
 
-### 3.2 Pielęgnacja Brody
+### 3.2 Kategorie Usług
 
-| Usługa | Cena | Czas |
-|--------|------|------|
-| Kontur brody | 25 zł | 15 min |
-| Pełna pielęgnacja brody | 50 zł | 30 min |
-| Golenie brzytwą (hot towel) | 60 zł | 35 min |
-| Strzyżenie + golenie brzytwą | 110 zł | 75 min |
+- **haircut** - Strzyżenia włosów
+- **beard** - Pielęgnacja i strzyżenie brody  
+- **combo** - Pakiety łączące strzyżenie włosów i brody
+- **coloring** - Koloryzacja włosów
 
-### 3.3 Dodatkowe Usługi
-
-| Usługa | Cena | Czas |
-|--------|------|------|
-| Mycie i stylizacja | 30 zł | 20 min |
-| Koloryzacja męska (całość) | 120 zł | 60 min |
-| Koloryzacja brody | 50 zł | 30 min |
-| Refleksy/baleyage | 150 zł | 90 min |
-| Regeneracja włosów | 80 zł | 45 min |
-| Depilacja woskiem (uszy, nos) | 25 zł | 15 min |
-
-### 3.4 Pakiety
-
-**Pakiet "Nowy Ja"** - 200 zł (120 min)
-- Strzyżenie męskie
-- Strzyżenie brody
-- Golenie brzytwą
-- Mycie i stylizacja
-
-**Pakiet "Premium Grooming"** - 150 zł (90 min)
-- Strzyżenie męskie
-- Strzyżenie brody
-- Mycie i stylizacja
-
-### 3.5 Informacje o Cenach
+### 3.3 Informacje o Cenach
 
 - Wszystkie ceny są cenami brutto
-- Płatność gotówką lub kartą
+- Płatność gotówką, kartą lub BLIK
 - Możliwość zakupu bonów podarunkowych
-- Program lojalnościowy: co 10 wizyta -50%
+- Ceny mogą ulec zmianie w przypadku bardzo długich lub grubych włosów wymagających dodatkowej pracy
 
 ---
 
@@ -163,12 +107,12 @@ Jako jedna z nielicznych kobiet w barberingu przynoszę inną perspektywę. Spec
 
 | Dzień | Godziny |
 |-------|---------|
-| Poniedziałek | 10:00 - 19:00 |
-| Wtorek | 10:00 - 19:00 |
-| Środa | 10:00 - 19:00 |
-| Czwartek | 10:00 - 20:00 |
-| Piątek | 10:00 - 20:00 |
-| Sobota | 9:00 - 15:00 |
+| Poniedziałek | 9:00 - 18:00 |
+| Wtorek | 9:00 - 18:00 |
+| Środa | 9:00 - 18:00 |
+| Czwartek | 9:00 - 18:00 |
+| Piątek | 9:00 - 18:00 |
+| Sobota | 9:00 - 14:00 |
 | Niedziela | Zamknięte |
 
 ### 4.2 Dni Wolne i Święta
@@ -186,20 +130,13 @@ Jako jedna z nielicznych kobiet w barberingu przynoszę inną perspektywę. Spec
 
 ### 4.3 Godziny Poszczególnych Fryzjerów
 
-**Bartek:**
-- Poniedziałek - Czwartek: 10:00 - 19:00
-- Piątek: 10:00 - 20:00
-- Sobota: 9:00 - 15:00
+**Szymon:**
+- Poniedziałek - Piątek: 9:00 - 18:00
+- Sobota: 9:00 - 14:00
 
-**Michał:**
-- Poniedziałek - Środa: 10:00 - 19:00
-- Czwartek - Piątek: 10:00 - 20:00
-- Sobota: 9:00 - 15:00
-
-**Kasia:**
-- Wtorek - Piątek: 10:00 - 19:00
-- Sobota: 9:00 - 15:00
-- Poniedziałek: nie pracuje
+**Ola:**
+- Poniedziałek - Piątek: 9:00 - 18:00
+- Sobota: 9:00 - 14:00
 
 ---
 
@@ -209,8 +146,8 @@ Jako jedna z nielicznych kobiet w barberingu przynoszę inną perspektywę. Spec
 
 **Online (preferowane):**
 1. Wejdź na stronę salonu
-2. Wybierz usługę
-3. Wybierz fryzjera (lub "dowolny")
+2. Wybierz usługę (Strzyżenie męskie, Strzyżenie brody, Combo, Koloryzacja)
+3. Wybierz fryzjera (Szymon, Ola lub "dowolny")
 4. Wybierz dostępny termin
 5. Podaj imię, email i telefon
 6. Potwierdź rezerwację
@@ -228,7 +165,7 @@ Jako jedna z nielicznych kobiet w barberingu przynoszę inną perspektywę. Spec
 - Minimalny czas przed rezerwacją: 2 godziny
 - Maksymalny czas do przodu: 30 dni
 - Można wybrać konkretnego fryzjera lub opcję "dowolny"
-- Po rezerwacji otrzymasz kod potwierdzający
+- Po rezerwacji otrzymasz kod potwierdzający (6 cyfr)
 - Przed wizytą otrzymasz przypomnienie SMS/email
 
 ### 5.3 Zarządzanie Rezerwacją
@@ -292,6 +229,7 @@ Jako jedna z nielicznych kobiet w barberingu przynoszę inną perspektywę. Spec
 - Klasyczne strzyżenie: co 4-6 tygodni
 - Długie włosy: co 6-8 tygodni (podcięcie końcówek)
 - Broda: co 1-2 tygodnie (kontur), co 3-4 tygodnie (pełna pielęgnacja)
+- Koloryzacja: w zależności od odrostu, zazwyczaj co 4-8 tygodni
 
 ---
 
@@ -370,10 +308,10 @@ ul. Białowieska 105
 **A:** Tak, jeśli mamy wolne miejsce, ale zalecamy rezerwację online lub telefoniczną, aby uniknąć czekania.
 
 ### Q: Czy mogę wybrać konkretnego fryzjera?
-**A:** Tak, podczas rezerwacji możesz wybrać Bartka, Michała, Kasię lub opcję "dowolny".
+**A:** Tak, podczas rezerwacji możesz wybrać Szymona, Olę lub opcję "dowolny".
 
 ### Q: Jak długo trwa strzyżenie?
-**A:** Standardowe strzyżenie trwa około 45 minut. Strzyżenie z brodą lub koloryzacja wymagają więcej czasu.
+**A:** Standardowe strzyżenie trwa 30 minut. Combo (włosy + broda) to 50 minut. Koloryzacja to 90 minut.
 
 ### Q: Czy oferujecie napoje dla klientów?
 **A:** Tak, oferujemy wodę i kawę bezpłatnie dla wszystkich klientów.
@@ -388,7 +326,7 @@ ul. Białowieska 105
 **A:** Tak, dzieci do 12 lat mają zniżkę. Dzieci poniżej 5 roku życia tylko z opiekunem.
 
 ### Q: Czy mogę zarezerwować wizytę wieczorem?
-**A:** W czwartki i piątki pracujemy do 20:00. Ostatnia rezerwacja na 19:00.
+**A:** Salon pracuje do 18:00 od poniedziałku do soboty. Ostatnia rezerwacja na 17:30.
 
 ### Q: Czy oferujecie usługi mobilne?
 **A:** Nie, wszystkie usługi wykonujemy wyłącznie w salonie.
@@ -396,4 +334,10 @@ ul. Białowieska 105
 ### Q: Czy mogę kupić bon podarunkowy?
 **A:** Tak, bony dostępne w salonie lub online. Ważność 12 miesięcy.
 
----32424234
+### Q: Jaki jest czas oczekiwania na wizytę?
+**A:** Zależy od terminu. Zazwyczaj można zarezerwować wizytę na ten sam dzień lub następny, ale na weekendy zalecamy rezerwację z wyprzedzeniem.
+
+---
+
+*Dokument wygenerowany automatycznie na podstawie danych systemowych.*
+*Ostatnia aktualizacja: 2026-04-09*

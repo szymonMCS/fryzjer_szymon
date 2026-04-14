@@ -6,7 +6,6 @@ from fastapi import Response, Request
 from src.config import settings
 from src.core.exceptions import AuthenticationException
 
-
 class AdminAuthService:
     COOKIE_NAME = "admin_session"
     COOKIE_MAX_AGE = 3600 * 8
@@ -18,11 +17,7 @@ class AdminAuthService:
         random_part = secrets.token_urlsafe(32)
         timestamp = str(int(datetime.utcnow().timestamp()))
         data = f"{random_part}:{timestamp}"
-        signature = hmac.new(
-            settings.SECRET_KEY.encode(),
-            data.encode(),
-            hashlib.sha256
-        ).hexdigest()
+        signature = hmac.new(settings.SECRET_KEY.encode(), data.encode(), hashlib.sha256).hexdigest()
         return f"{data}:{signature}"
     
     def _verify_token(self, token: str) -> bool:
@@ -38,11 +33,7 @@ class AdminAuthService:
                 return False
             
             data = f"{random_part}:{timestamp_str}"
-            expected_signature = hmac.new(
-                settings.SECRET_KEY.encode(),
-                data.encode(),
-                hashlib.sha256
-            ).hexdigest()
+            expected_signature = hmac.new(settings.SECRET_KEY.encode(), data.encode(), hashlib.sha256).hexdigest()
             
             return hmac.compare_digest(signature, expected_signature)
         except (ValueError, IndexError):
@@ -50,7 +41,7 @@ class AdminAuthService:
     
     async def authenticate(self, username: str, password: str, response: Response) -> dict:
         if not self._verify_credentials(username, password):
-            raise AuthenticationException("Invalid credentials")
+            raise AuthenticationException("Nieprawidlowe dane logowania")
         
         token = self._create_token()
         response.set_cookie(
@@ -58,11 +49,10 @@ class AdminAuthService:
             value=token,
             httponly=True,
             samesite="lax",
-            secure=False,
+            secure=not settings.DEBUG,
             path="/",
             max_age=self.COOKIE_MAX_AGE
         )
-        
         return {"success": True}
     
     async def logout(self, response: Response) -> dict:
@@ -71,7 +61,7 @@ class AdminAuthService:
             path="/",
             httponly=True,
             samesite="lax",
-            secure=False
+            secure=not settings.DEBUG
         )
         return {"success": True}
     

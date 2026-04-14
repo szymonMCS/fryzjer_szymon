@@ -1,32 +1,25 @@
-from typing import List, Optional, Any
+from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field
 
 
 class RAGQueryRequest(BaseModel):
-    query: str = Field(..., min_length=1, max_length=2000, description="Pytanie użytkownika")
-    history: Optional[List[dict]] = Field(default=None, description="Historia rozmowy")
-    category: Optional[str] = Field(default=None, description="Opcjonalna kategoria do filtrowania")
-
-
-class RAGSource(BaseModel):
-    title: str
-    category: str
-    similarity: float
-    content_preview: str
+    query: str = Field(..., min_length=1, max_length=2000)
+    history: Optional[List[dict]] = Field(default=None)
+    session_id: Optional[str] = Field(default=None)
+    confirmation: Optional[str] = Field(default=None)
 
 
 class RAGResponse(BaseModel):
     answer: str
-    sources: List[RAGSource]
-    confidence: float
-    query_time_ms: int
+    session_id: Optional[str] = None
+    requires_confirmation: bool = False
 
 
 class RAGSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=1000)
-    k: int = Field(default=10, ge=1, le=50, description="Liczba wyników")
-    category: Optional[str] = Field(default=None)
+    k: int = Field(default=10, ge=1, le=50)
+    category: Optional[str] = None
 
 
 class SearchResultItem(BaseModel):
@@ -42,13 +35,6 @@ class RAGSearchResponse(BaseModel):
     results: List[SearchResultItem]
     total: int
     query: str
-
-
-class KnowledgeSyncStatus(BaseModel):
-    last_sync: Optional[str]
-    pending_changes: int
-    total_chunks: int
-    is_syncing: bool
 
 
 class RAGHealthResponse(BaseModel):
@@ -91,3 +77,10 @@ class KnowledgeSyncResponse(BaseModel):
     files_processed: int
     chunks_created: int
     message: str
+
+
+class KnowledgeSyncStatus(BaseModel):
+    last_sync: Optional[str]
+    pending_changes: int
+    total_chunks: int
+    is_syncing: bool

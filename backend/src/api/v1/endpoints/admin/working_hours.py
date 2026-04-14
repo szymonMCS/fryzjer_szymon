@@ -1,9 +1,9 @@
 from typing import List, Optional
 from uuid import UUID
+from datetime import time
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.config import get_async_session
 from database.repositories.working_hours_repository import WorkingHoursRepository
 from database.models import WorkingHours
 from src.schemas.working_hours import WorkingHoursResponse, WorkingHoursUpdate
@@ -11,7 +11,6 @@ from src.api.deps import get_working_hours_repo, get_current_admin, get_db
 from src.core.exceptions import NotFoundException
 
 router = APIRouter(prefix="/working-hours", tags=["working-hours"])
-
 
 @router.get("", response_model=List[WorkingHoursResponse])
 async def get_schedule(repo: WorkingHoursRepository = Depends(get_working_hours_repo)):
@@ -21,7 +20,7 @@ async def get_schedule(repo: WorkingHoursRepository = Depends(get_working_hours_
 async def get_day(day: str, repo: WorkingHoursRepository = Depends(get_working_hours_repo)):
     result = await repo.get_by_day(day)
     if not result:
-        raise NotFoundException(f"Working hours for {day} not found")
+        raise NotFoundException(f"Nie znaleziono godzin pracy dla {day}")
     return result
 
 @router.put("/{day}", response_model=WorkingHoursResponse)
@@ -33,7 +32,7 @@ async def update_hours(
 ):
     working_hours = await repo.get_by_day(day)
     if not working_hours:
-        raise NotFoundException(f"Working hours for {day} not found")
+        raise NotFoundException(f"Nie znaleziono godzin pracy dla {day}")
     
     update_data = data.model_dump(exclude_unset=True)
     return await repo.update(working_hours, update_data)
@@ -55,7 +54,6 @@ async def init_default_working_hours(db: AsyncSession = Depends(get_db), admin: 
     for wh in default_hours:
         existing = await db.execute(select(WorkingHours).where(WorkingHours.day_of_week == wh["day_of_week"]))
         if existing.scalar_one_or_none() is None:
-            from datetime import time
             new_wh = WorkingHours(
                 day_of_week=wh["day_of_week"],
                 start_time=time.fromisoformat(wh["start_time"]) if wh["start_time"] else None,

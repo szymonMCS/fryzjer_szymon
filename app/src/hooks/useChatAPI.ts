@@ -31,6 +31,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
   const [isTyping, setIsTyping] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -53,9 +54,9 @@ export const useChatAPI = (): UseChatAPIReturn => {
     setIsTyping(true);
 
     try {
-      // Prepare history for RAG (last 5 messages)
+      // Prepare history for RAG (last 20 messages)
       const history = messages
-        .slice(-5)
+        .slice(-20)
         .map(msg => ({
           role: msg.role,
           content: msg.content,
@@ -65,7 +66,13 @@ export const useChatAPI = (): UseChatAPIReturn => {
       const response = await askQuestion({
         query: content,
         history: history.length > 0 ? history : undefined,
+        session_id: sessionId,
       });
+
+      // Save session_id for next requests
+      if (response.session_id) {
+        setSessionId(response.session_id);
+      }
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -110,6 +117,7 @@ export const useChatAPI = (): UseChatAPIReturn => {
   const clearMessages = useCallback(() => {
     setMessages([WELCOME_MESSAGE]);
     setError(null);
+    setSessionId(undefined);
   }, []);
 
   const clearError = useCallback(() => {

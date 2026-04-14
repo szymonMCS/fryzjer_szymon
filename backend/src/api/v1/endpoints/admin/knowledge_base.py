@@ -3,8 +3,8 @@ from pathlib import Path
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.config import get_async_session
 from database.repositories.knowledge_repository import KnowledgeRepository
+from src.api.deps import get_db
 from src.schemas.rag import (
     KnowledgeSyncStatus,
     KnowledgeUploadResponse,
@@ -42,7 +42,7 @@ def _validate_filename(filename: str) -> Path:
 async def upload_knowledge_file(
     file: UploadFile = File(...),
     rebuild: bool = Query(default=False, description="Usuń istniejące chunki z tego samego źródła przed uploadem"),
-    db: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_db),
     admin: bool = Depends(get_current_admin)
 ):
     if not file.filename:
@@ -109,7 +109,7 @@ async def update_knowledge_file(filename: str, data: KnowledgeFileUpdate, admin:
     return {"success": True, "message": f"Plik {filename} został zapisany"}
 
 @router.delete("/files/{filename}")
-async def delete_knowledge_file(filename: str, db: AsyncSession = Depends(get_async_session), admin: bool = Depends(get_current_admin)):
+async def delete_knowledge_file(filename: str, db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     file_path = _validate_filename(filename)
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plik nie istnieje")
@@ -134,7 +134,7 @@ def _validate_openai_key():
 async def ingest_knowledge_file(
     filename: str,
     rebuild: bool = Query(default=True, description="Usuń istniejące chunki z tego samego źródła przed ingestem"),
-    db: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_db),
     admin: bool = Depends(get_current_admin)
 ):
     _validate_openai_key()
@@ -159,7 +159,7 @@ async def ingest_knowledge_file(
         )
 
 @router.post("/sync", response_model=KnowledgeSyncResponse)
-async def sync_knowledge_files(db: AsyncSession = Depends(get_async_session), admin: bool = Depends(get_current_admin)):
+async def sync_knowledge_files(db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     _validate_openai_key()
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     files = [f for f in DATA_DIR.iterdir() if f.is_file() and f.suffix.lower() in ALLOWED_EXTS]
@@ -195,7 +195,7 @@ async def sync_knowledge_files(db: AsyncSession = Depends(get_async_session), ad
         )
 
 @router.get("/sync/status", response_model=KnowledgeSyncStatus)
-async def get_sync_status(db: AsyncSession = Depends(get_async_session), admin: bool = Depends(get_current_admin)):
+async def get_sync_status(db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     try:
         repo = KnowledgeRepository(db)
         total_chunks = await repo.count()

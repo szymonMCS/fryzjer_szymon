@@ -20,27 +20,12 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 
 Base = declarative_base()
 
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
-
 async def get_async_session():
     async with AsyncSessionLocal() as session:
         try:
             yield session
         finally:
             await session.close()
-
-async def check_database_exists() -> bool:
-    try:
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT 1 FROM services LIMIT 1"))
-            return result.scalar() is not None
-    except Exception:
-        return False
 
 async def init_db():
     async with engine.begin() as conn:
@@ -52,31 +37,7 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
     print("[OK] Database initialized (PostgreSQL)")
 
-async def reset_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    print("[OK] Database reset complete")
-
 async def close_db():
     await engine.dispose()
     print("[OK] Database connections closed")
 
-async def get_db_status() -> dict:
-    try:
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT version()"))
-            version = result.scalar()
-            tables_exist = await check_database_exists()
-            return {
-                "connected": True,
-                "type": "PostgreSQL",
-                "version": version,
-                "tables_created": tables_exist
-            }
-    except Exception as e:
-        return {
-            "connected": False,
-            "type": "Unknown",
-            "error": str(e)
-        }
