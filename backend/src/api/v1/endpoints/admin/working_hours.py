@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from datetime import time
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.repositories.working_hours_repository import WorkingHoursRepository
