@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 import re
@@ -12,6 +13,7 @@ from agents.items import ToolCallItem, ToolCallOutputItem
 from src.config import settings, EMBEDDING_DIMS
 from dataclasses import dataclass
 from src.services.booking.service import BookingService
+from src.services.email import email_service
 from database.repositories.service_repository import ServiceRepository
 from database.repositories.team_repository import TeamRepository
 from database.repositories.booking_repository import BookingRepository
@@ -133,12 +135,52 @@ async def get_team(ctx: RunContextWrapper[BookingContext]) -> str:
         return json.dumps({"error": str(e)})
 
 
+_DATE_FORMATS = ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%d-%m-%Y", "%d.%m", "%d/%m")
+
+
+def _parse_date(date_str: str) -> date:
+    s = (date_str or "").strip()
+    for fmt in _DATE_FORMATS:
+        try:
+            parsed = datetime.strptime(s, fmt).date()
+            if fmt in ("%d.%m", "%d/%m"):
+                parsed = parsed.replace(year=date.today().year)
+            return parsed
+        except ValueError:
+            continue
+    raise ValueError(f"Nie rozpoznano formatu daty: {date_str}")
+
+
+def _normalize_time(time_str: str) -> str:
+    s = (time_str or "").strip().replace(".", ":")
+    if ":" not in s and s.isdigit():
+        return f"{int(s):02d}:00"
+    parts = s.split(":")
+    if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+        return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
+    return s
+
+
 @function_tool
-async def get_available_slots(ctx: RunContextWrapper[BookingContext], service_id: str, date_str: str, team_member_id: str) -> str:
+async def get_available_slots(
+    ctx: RunContextWrapper[BookingContext],
+    date_str: str,
+    service_id: Optional[str] = None,
+    team_member_id: Optional[str] = None,
+) -> str:
     try:
-        booking_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        state = ctx.context.session_state
+        service_id = service_id or state.get("service_id")
+        team_member_id = team_member_id or state.get("team_member_id")
+
+        if not service_id:
+            return json.dumps({"error": "Brak usługi — najpierw wywołaj save_service"})
+        if not team_member_id:
+            return json.dumps({"error": "Brak fryzjera — najpierw wywołaj save_barber"})
+
+        booking_date = _parse_date(date_str)
         if booking_date < date.today():
-            return json.dumps({"error": f"Data {date_str} jest w przeszłości"})
+            return json.dumps({"error": f"Data {booking_date.isoformat()} jest w przeszłości"})
 
         availability = await ctx.context.booking_service.get_availability(
             booking_date=booking_date,
@@ -150,8 +192,9 @@ async def get_available_slots(ctx: RunContextWrapper[BookingContext], service_id
             return json.dumps({"slots": [], "message": "Brak wolnych terminów na ten dzień"})
 
         slots = sorted(availability.keys())
-        return json.dumps({"slots": slots}, ensure_ascii=False)
+        return json.dumps({"date": booking_date.isoformat(), "slots": slots}, ensure_ascii=False)
     except Exception as e:
+        logger.exception("get_available_slots error")
         return json.dumps({"error": str(e)})
 
 
@@ -185,9 +228,14 @@ async def save_barber(ctx: RunContextWrapper[BookingContext], barber_name: str) 
 
 @function_tool
 async def save_datetime(ctx: RunContextWrapper[BookingContext], date_str: str, time_str: str) -> str:
-    ctx.context.session_state["date"] = date_str
-    ctx.context.session_state["time"] = time_str
-    return json.dumps({"ok": True, "date": date_str, "time": time_str})
+    try:
+        iso_date = _parse_date(date_str).isoformat()
+        norm_time = _normalize_time(time_str)
+        ctx.context.session_state["date"] = iso_date
+        ctx.context.session_state["time"] = norm_time
+        return json.dumps({"ok": True, "date": iso_date, "time": norm_time})
+    except Exception as e:
+        return json.dumps({"ok": False, "error": str(e)})
 
 
 @function_tool
@@ -241,6 +289,16 @@ async def create_booking(ctx: RunContextWrapper[BookingContext]) -> str:
             "booking_time": state["time"],
             "notes": ""
         })
+
+        if booking.customer_email:
+            asyncio.create_task(email_service.send_booking_confirmation(
+                to_email=booking.customer_email,
+                customer_name=booking.customer_name,
+                service_name=state.get("service_name", ""),
+                booking_date=booking.booking_date,
+                booking_time=booking.booking_time,
+                confirmation_code=booking.confirmation_code
+            ))
 
         return json.dumps({
             "success": True,

@@ -126,7 +126,7 @@ async def list_bookings(
 @router.patch("/admin/bookings/{booking_id}", response_model=BookingResponse)
 async def update_booking_status(
     booking_id: UUID,
-    booking_status: str,
+    booking_status: str = Query(..., alias="status"),
     booking_service: BookingService = Depends(get_booking_service),
     service_repo: ServiceRepository = Depends(get_service_repo),
     team_repo: TeamRepository = Depends(get_team_repo),
