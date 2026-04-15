@@ -25,3 +25,6 @@ class AuthenticationException(DomainException):
         super().__init__(message, status_code=401)
 
 
+class ServiceUnavailableException(DomainException):
+    def __init__(self, message: str = "Service unavailable"):
+        super().__init__(message, status_code=503)

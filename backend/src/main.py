@@ -1,11 +1,16 @@
 import os
+import logging
+import traceback
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from database.config import init_db, close_db, AsyncSessionLocal
 from src.core.exceptions import DomainException
+
+logger = logging.getLogger(__name__)
 from database.repositories.knowledge_repository import KnowledgeRepository
 from src.config import settings, PROJECT_ROOT
 from src.api.v1.router import api_router
@@ -94,6 +99,15 @@ app = FastAPI(
 @app.exception_handler(DomainException)
 async def domain_exception_handler(request: Request, exc: DomainException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception on {request.url.path}: {exc}\n{traceback.format_exc()}")
+    return JSONResponse(status_code=500, content={"detail": "Wystąpił nieoczekiwany błąd serwera"})
 
 app.add_middleware(
     CORSMiddleware,

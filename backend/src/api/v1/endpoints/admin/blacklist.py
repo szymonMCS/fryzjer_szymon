@@ -1,11 +1,12 @@
-from typing import List, Optional
+from typing import List
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.repositories.blacklist_repository import BlacklistRepository
 from src.api.deps import get_db
 from src.schemas.blacklist import BlacklistedPhoneCreate, BlacklistedPhoneResponse, BlacklistCheckResponse
 from src.api.deps import get_current_admin
+from src.core.exceptions import ConflictException, NotFoundException
 
 router = APIRouter(prefix="/blacklist", tags=["admin-blacklist"])
 
@@ -27,41 +28,25 @@ async def add_to_blacklist(
     admin: bool = Depends(get_current_admin)
 ):
     repo = BlacklistRepository(db)
-    
-    if data.phone_number:
-        existing = await repo.get_by_phone_number(data.phone_number)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Ten numer telefonu jest już na czarnej liście"
-            )
-    if data.email:
-        existing = await repo.get_by_email(data.email)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Ten email jest już na czarnej liście"
-            )
-    entry_data = {
-        "reason": data.reason,
-        "created_by": "admin"
-    }
-    
+
+    if data.phone_number and await repo.get_by_phone_number(data.phone_number):
+        raise ConflictException("Ten numer telefonu jest już na czarnej liście")
+    if data.email and await repo.get_by_email(data.email):
+        raise ConflictException("Ten email jest już na czarnej liście")
+
+    entry_data = {"reason": data.reason, "created_by": "admin"}
     if data.phone_number:
         entry_data["phone_number"] = data.phone_number
     if data.email:
         entry_data["email"] = data.email.lower().strip()
-    
-    blacklist_entry = await repo.create(entry_data)
-    return blacklist_entry
+
+    return await repo.create(entry_data)
 
 @router.delete("/phones/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_from_blacklist(entry_id: UUID, db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     repo = BlacklistRepository(db)
-    
-    success = await repo.delete(entry_id)
-    if not success:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono wpisu na czarnej liście")
+    if not await repo.delete(entry_id):
+        raise NotFoundException("Nie znaleziono wpisu na czarnej liście")
 
 @router.get("/phones/check/{phone_number}", response_model=BlacklistCheckResponse)
 async def check_phone_blacklist(phone_number: str, db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
@@ -73,5 +58,4 @@ async def check_phone_blacklist(phone_number: str, db: AsyncSession = Depends(ge
 async def check_email_blacklist(email: str, db: AsyncSession = Depends(get_db), admin: bool = Depends(get_current_admin)):
     repo = BlacklistRepository(db)
     entry = await repo.get_by_email(email)
-    
     return BlacklistCheckResponse(is_blacklisted=entry is not None, reason=entry.reason if entry else None)
